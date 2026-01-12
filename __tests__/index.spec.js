@@ -1,6 +1,5 @@
 import { remark } from 'remark';
 import remarkHtml from 'remark-html';
-import remarkComment from 'remark-comment';
 import plugin from '../src/index';
 
 test('Should support ==highlight text==', async () => {
@@ -98,51 +97,6 @@ test('Should ignore highlights inside code blocks', async () => {
     const output = String(await remark().use(remarkHtml).use(plugin).process(text));
 
     expect(output).toContain('<code>==Highlight==</code>');
-});
-
-test('Should ignore content between "<!--ignore-->" and "<!--end ignore-->" HTML comments', async () => {
-    const text = [
-        'Hello world',
-        '<!--ignore-->',
-        'Private content',
-        '<!--end ignore-->',
-        '<!--ignore-->',
-        'Private content',
-        '<!--end ignore-->',
-        'Bye world',
-    ].join('\n');
-
-    const output = String(await remark().use(remarkComment, { ast: true }).use(plugin).process(text));
-
-    expect(output).toContain('Hello world');
-    expect(output).toContain('Bye world');
-    expect(output).not.toContain('Private content');
-});
-
-test('Should ignore content after "<!--ignore-->" HTML comment', async () => {
-    const text = [
-        'Hello world',
-        '<!--ignore-->',
-        'Private content',
-    ].join('\n');
-
-    const output = String(await remark().use(remarkComment, { ast: true }).use(plugin).process(text));
-
-    expect(output).not.toContain('Private content');
-});
-
-test('Should display paywall after "<!-- private -->" HTML comment', async () => {
-    const paywall = '<p>Only for members</p>';
-    const text = [
-        'Hello world',
-        '<!-- private -->',
-        'here the s3cr3t password',
-    ].join('\n');
-
-    const output = String(await remark().use(remarkComment, { ast: true }).use(plugin, { paywall }).process(text));
-
-    expect(output).toContain(paywall);
-    expect(output).not.toContain('s3cr3t');
 });
 
 test('Should support > [!CALLOUT]', async () => {
@@ -250,4 +204,14 @@ test('Should support [[A & B]]', async () => {
     const output = String(await remark().use(plugin).process(text));
 
     expect(output).toContain('<a href="/a-and-b" title="A & B">A & B</a>');
+});
+
+test('Should ignore directive', async () => {
+    const text = `:::tip
+hello
+:::`.trim();
+
+    const output = String(await remark().use(plugin).process(text));
+
+    expect(output).toContain(text);
 });

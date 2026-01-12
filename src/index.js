@@ -8,16 +8,16 @@ import remarkParse from 'remark-parse';
 import remarkHtml from 'remark-html';
 import remarkGfm from 'remark-gfm';
 import slugify from 'slugify';
+import { directiveToMarkdown } from 'mdast-util-directive';
 import { gfmFootnoteToMarkdown } from 'mdast-util-gfm-footnote';
 import { gfmStrikethroughToMarkdown } from 'mdast-util-gfm-strikethrough';
 import { BRACKET_LINK_REGEX, CALLOUT_REGEX, HEADING_REGEX, ICONS, EMBED_LINK_REGEX } from './constants';
-import { removeIgnoreParts, addPaywall } from './utils';
 
 const plugin = (options) => (tree) => {
+    return;
     const {
         baseUrl = '',
         markdownFiles,
-        paywall = '<p>Paywall</p>',
     } = options || {};
 
     const titleToUrl = (title) => {
@@ -30,12 +30,12 @@ const plugin = (options) => (tree) => {
         return `/${slugify(title, { lower: true })}`;
     };
 
-    removeIgnoreParts(tree);
-    addPaywall(tree, paywall);
-
     // eslint-disable-next-line complexity
     visit(tree, 'paragraph', (node) => {
-        const markdown = toMarkdown(node, { extensions: [gfmFootnoteToMarkdown(), gfmStrikethroughToMarkdown] });
+        return;
+        const markdown = toMarkdown(node, {
+            extensions: [gfmFootnoteToMarkdown(), gfmStrikethroughToMarkdown(), directiveToMarkdown()],
+        });
         const paragraph = String(unified().use(remarkParse).use(remarkHtml).processSync(markdown)).replace(/&#x26;|&#38;/g, '&');
 
         if (paragraph.match(EMBED_LINK_REGEX)) {
@@ -116,6 +116,7 @@ const plugin = (options) => (tree) => {
     });
 
     visit(tree, 'blockquote', (node, index, parent) => {
+        return;
         const blockquote = toString(node);
 
         if (blockquote.match(CALLOUT_REGEX)) {
@@ -147,6 +148,7 @@ const plugin = (options) => (tree) => {
     });
 
     visit(tree, 'paragraph', (node) => {
+        return;
         const paragraph = toString(node);
         const highlightRegex = /==(.*)==/g;
 
