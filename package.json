@@ -19,7 +19,7 @@
 	},
 	"scripts": {
 		"test": "vitest run",
-		"deploy": "CI=true npx semantic-release",
+		"release": "release-it",
 		"prepublishOnly": "npm run build",
 		"build": "tsdown",
 		"watch": "tsdown --watch",
@@ -32,7 +32,7 @@
 	"description": "Remark plugin to support Obsidian markdown syntax",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/mym0404/remark-obsidian-fumadocs-mdx.git"
+		"url": "https://github.com/mym0404/remark-obsidian-mdx.git"
 	},
 	"keywords": [
 		"remark",
@@ -46,13 +46,16 @@
 	"license": "GPL-3.0",
 	"devDependencies": {
 		"@biomejs/biome": "2.3.11",
-		"@semantic-release/git": "^10.0.1",
 		"@types/mdast": "^4.0.4",
 		"@types/unist": "^3.0.3",
 		"mdast-util-gfm-footnote": "^1.0.2",
 		"mdast-util-gfm-strikethrough": "^1.0.3",
 		"mdast-util-to-markdown": "^1.5.0",
 		"mdast-util-to-string": "^3.2.0",
+		"mdast-util-wiki-link": "^0.1.2",
+		"micromark-extension-mark": "^1.0.2",
+		"micromark-extension-wiki-link": "^0.0.4",
+		"release-it": "^19.2.3",
 		"remark": "^14.0.3",
 		"remark-comment": "^1.0.0",
 		"remark-frontmatter": "^4.0.1",
@@ -66,23 +69,6 @@
 		"unist-util-visit": "^4.1.2",
 		"vitest": "^4.0.16",
 		"yaml": "^2.3.1"
-	},
-	"release": {
-		"plugins": [
-			"@semantic-release/commit-analyzer",
-			"@semantic-release/release-notes-generator",
-			"@semantic-release/npm",
-			"@semantic-release/github",
-			[
-				"@semantic-release/git",
-				{
-					"assets": [
-						"package.json"
-					],
-					"message": "chore(release): ${nextRelease.version}"
-				}
-			]
-		]
 	},
 	"packageManager": "pnpm@10.27.0+sha512.72d699da16b1179c14ba9e64dc71c9a40988cbdc65c264cb0e489db7de917f20dcf4d64d8723625f2969ba52d4b7e2a1170682d9ac2a5dcaeaab732b7e16f04a"
 }

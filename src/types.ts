@@ -1,7 +1,43 @@
-import type { toString as mdastToString } from "mdast-util-to-string";
-import { visit } from "unist-util-visit";
+import type { Nodes } from "mdast";
+import type { visit } from "unist-util-visit";
 
-export type MarkdownNode = Parameters<typeof mdastToString>[0];
+export type MarkdownNode = Nodes;
+
+export type MarkdownFile = {
+	file: string;
+	permalink?: string;
+	content?: string;
+};
+
+export type ChildrenNode = {
+	children?: unknown[];
+};
+
+export type ChildrenNodeWithChildren = ChildrenNode & {
+	children: unknown[];
+};
+
+export type ParagraphNode = MarkdownNode & {
+	type: "paragraph";
+	children: unknown[];
+};
+
+export type LinkNode = MarkdownNode & {
+	type: "link";
+	url: string;
+	title?: string;
+	children: unknown[];
+	data?: {
+		hProperties?: {
+			className?: string[];
+		};
+	};
+};
+
+export type HtmlNode = MarkdownNode & {
+	type: "html";
+	value: string;
+};
 
 export type RootNode = {
 	type: "root";
@@ -16,6 +52,13 @@ export type MdxJsxAttribute = {
 
 export type MdxJsxFlowElement = {
 	type: "mdxJsxFlowElement";
+	name: string;
+	attributes: MdxJsxAttribute[];
+	children: unknown[];
+};
+
+export type MdxJsxTextElement = {
+	type: "mdxJsxTextElement";
 	name: string;
 	attributes: MdxJsxAttribute[];
 	children: unknown[];

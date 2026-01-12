@@ -2,120 +2,129 @@
 
 > This plugin is built on [remark-obsidian](https://github.com/johackim/remark-obsidian)
 
-[![Version](https://img.shields.io/github/tag/johackim/remark-obsidian.svg?label=Version&style=flat&colorA=2B323B&colorB=1e2329)](https://github.com/johackim/remark-obsidian/releases)
-[![License](https://img.shields.io/badge/license-GPL%20v3%2B-yellow.svg?label=License&style=flat&colorA=2B323B&colorB=1e2329)](https://raw.githubusercontent.com/johackim/remark-obsidian/master/LICENSE.txt)
+> [!IMPORTANT]
+> This project is under developing.
 
-Remark plugin to support Obsidian markdown syntax.
 
-## 📋 Requirements
+[![Version](https://img.shields.io/github/tag/mym0404/remark-obsidian-mdx.svg?label=Version&style=flat&colorA=2B323B&colorB=1e2329)](https://github.com/mym0404/remark-obsidian-mdx/releases)
+[![License](https://img.shields.io/badge/license-GPL%20v3%2B-yellow.svg?label=License&style=flat&colorA=2B323B&colorB=1e2329)](https://raw.githubusercontent.com/mym0404/remark-obsidian-mdx/master/LICENSE.txt)
 
-- Nodejs >= 14
+Remark plugin to support Obsidian markdown syntax with MDX output.
 
-## ✨ Features
+## Requirements
 
-- [x] Support `> [!CALLOUT]`
-- [x] Support `==highlight text==`
-- [x] Support `[[Internal link]]`
-- [x] Support `[[Internal link|With custom text]]`
-- [x] Support `[[Internal link#heading]]`
-- [x] Support `[[Internal link#heading|With custom text]]`
-- [x] Support `![[Embed note]]`
-- [ ] Support `![[Embed note#heading]]`
+- Node.js >= 14
 
-## 🚀 Installation
+## Features
+
+- `> [!CALLOUT]` to `<Callout ...>` (MDX JSX flow element)
+- `==highlight==` to `<mark>...</mark>` (MDX JSX text element)
+- `[[Wiki link]]` to mdast `link` nodes (alias divider is `|`)
+- `[[#Heading]]` uses a heading slug
+- `![[Embed note]]` to raw HTML embed (requires `markdownFiles`)
+- Not supported: `![[Embed note#heading]]`
+
+## Installation
 
 ```bash
-yarn add -D remark-obsidian-mdx
+pnpm add -D remark-obsidian-mdx
 ```
 
-## 📦 Usage
+## Usage
 
-With [remark](https://github.com/remarkjs/remark/) :
+### MDX pipeline
 
 ```js
-import { remark } from 'remark';
-import remarkObsidianMdx from 'remark-obsidian-mdx';
+import { compile } from "@mdx-js/mdx";
+import remarkObsidianMdx from "remark-obsidian-mdx";
 
-const html = String(await remark().use(remarkObsidianMdx).process('[[Hello world]]'));
-console.log(html); // <a href="/hello-world">Hello world</a>
+const result = await compile(source, {
+  remarkPlugins: [remarkObsidianMdx],
+});
 ```
 
-With [unified](https://github.com/unifiedjs/unified) :
+If your MDX runtime does not provide a default `Callout` component, register it in your components map (for example, `Callout` from Fumadocs).
+
+### Unified to HTML
 
 ```js
-import { unified } from 'unified';
-import remarkObsidianMdx from 'remark-obsidian-mdx';
-import remarkParse from 'remark-parse';
-import remarkRehype from 'remark-rehype';
-import rehypeStringify from 'rehype-stringify';
+import { unified } from "unified";
+import remarkParse from "remark-parse";
+import remarkRehype from "remark-rehype";
+import rehypeStringify from "rehype-stringify";
+import remarkObsidianMdx from "remark-obsidian-mdx";
 
 const { value } = unified()
-    .use(remarkParse)
-    .use(remarkObsidianMdx)
-    .use(remarkRehype, {
-      allowDangerousHtml: true,
-      passThrough: [
-        'mdxjsEsm',
-        'mdxFlowExpression',
-        'mdxJsxFlowElement',
-        'mdxJsxTextElement',
-        'mdxTextExpression',
-      ],
-    })
-    .use(rehypeStringify, { allowDangerousHtml: true })
-    .processSync('[[Hello world]]');
-
-console.log(value); // <a href="/hello-world">Hello world</a>
+  .use(remarkParse)
+  .use(remarkObsidianMdx)
+  .use(remarkRehype, {
+    allowDangerousHtml: true,
+    passThrough: [
+      "mdxjsEsm",
+      "mdxFlowExpression",
+      "mdxJsxFlowElement",
+      "mdxJsxTextElement",
+      "mdxTextExpression",
+    ],
+  })
+  .use(rehypeStringify, { allowDangerousHtml: true })
+  .processSync("[[Hello world]]");
 ```
 
-## Callout options
+`passThrough` keeps MDX nodes intact when converting to HAST; without it, MDX JSX nodes are dropped.
 
-Callout parsing can be configured through the `callout` option.
+## Options
 
 ```js
-import remarkObsidianMdx from 'remark-obsidian-mdx';
+import remarkObsidianMdx from "remark-obsidian-mdx";
 
 remark().use(remarkObsidianMdx, {
+  baseUrl: "/docs",
+  markdownFiles: [
+    { file: "myfile.md", permalink: "custom-link" },
+    { file: "My Note.md", content: "This is **embedded**." },
+  ],
   callout: {
-    componentName: 'Callout',
-    typePropName: 'type',
-    defaultType: 'info',
+    componentName: "Callout",
+    typePropName: "type",
+    defaultType: "info",
     typeMap: {
-      note: 'info',
-      abstract: 'info',
-      summary: 'info',
-      tldr: 'info',
-      info: 'info',
-      todo: 'info',
-      quote: 'info',
-      tip: 'idea',
-      hint: 'idea',
-      example: 'idea',
-      question: 'idea',
-      warn: 'warn',
-      warning: 'warn',
-      caution: 'warn',
-      attention: 'warn',
-      danger: 'error',
-      error: 'error',
-      fail: 'error',
-      failure: 'error',
-      bug: 'error',
-      success: 'success',
-      done: 'success',
-      check: 'success',
+      note: "info",
+      abstract: "info",
+      summary: "info",
+      tldr: "info",
+      info: "info",
+      todo: "info",
+      quote: "info",
+      tip: "idea",
+      hint: "idea",
+      example: "idea",
+      question: "idea",
+      warn: "warn",
+      warning: "warn",
+      caution: "warn",
+      attention: "warn",
+      danger: "error",
+      error: "error",
+      fail: "error",
+      failure: "error",
+      bug: "error",
+      success: "success",
+      done: "success",
+      check: "success",
     },
   },
 });
 ```
 
 Notes:
+- `baseUrl` is prefixed to resolved wiki links.
+- Wiki links and `==mark==` are parsed via micromark extensions injected by the plugin.
+- `markdownFiles` resolves wiki links and embeds by filename. Missing entries add a `not-found` class.
 - `typeMap` fully replaces the default mapping when provided.
 - `typeMap` keys are normalized to lowercase.
 - Empty mapped values fall back to `defaultType`.
 
-## 📜 License
+## License
 
-This project is licensed under the GNU GPL v3.0 - see the [LICENSE.txt](https://raw.githubusercontent.com/johackim/remark-obsidian/master/LICENSE.txt) file for details
-
-**Free Software, Hell Yeah!**
+This project is licensed under the GNU GPL v3.0 - see the [LICENSE.txt](https://raw.githubusercontent.com/mym0404/remark-obsidian-mdx/master/LICENSE.txt) file for details.

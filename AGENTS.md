@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `src/` contains the remark plugin implementation and helpers. Key files include `src/index.ts` (plugin entry), `src/callout.ts` (callout transform), and `src/ast.ts` / `src/types.ts` (shared utilities and types).
+- `src/` contains the remark plugin implementation and helpers. Key files include `src/index.ts` (plugin entry), `src/callout.ts` (callout transform), `src/wiki-link.ts` (wiki link parsing/link nodes), `src/mark.ts` (== highlight parser), and `src/ast.ts` / `src/types.ts` (shared utilities and types).
 - `__tests__/` holds Vitest specs (e.g., `__tests__/index.spec.ts`).
 - Config lives at the root (`tsconfig.json`, `vitest.config.ts`, `tsdown.config.ts`, `biome.json`).
 - `README.md` documents usage and callout options.

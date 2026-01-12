@@ -1,35 +1,22 @@
-import { gfmFootnoteToMarkdown } from "mdast-util-gfm-footnote";
-import { gfmStrikethroughToMarkdown } from "mdast-util-gfm-strikethrough";
-import { toMarkdown } from "mdast-util-to-markdown";
-import { toString as mdastToString } from "mdast-util-to-string";
+import { fromMarkdown as wikiLinkFromMarkdown } from "mdast-util-wiki-link";
+import { pandocMark } from "micromark-extension-mark";
+// @ts-ignore
+import { syntax as wikiLink } from "micromark-extension-wiki-link";
 import { remark } from "remark";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
 import remarkHtml from "remark-html";
-import remarkParse from "remark-parse";
-import slugify from "slugify";
-import { unified } from "unified";
 import { visit } from "unist-util-visit";
+import { type CalloutOptions, createCalloutNode } from "./callout";
+import { markFromMarkdown } from "./mark";
+import type { MarkdownFile, MdxJsxTextElement, VisitTree } from "./types";
 import {
 	hasChildren,
-	hasInlineCode,
 	isMarkdownNode,
-	isStrongNode,
+	isTextNode,
 	removeChildren,
-} from "./ast";
-import { type CalloutOptions, createCalloutNode } from "./callout";
-import {
-	BRACKET_LINK_REGEX,
-	EMBED_LINK_REGEX,
-	HEADING_REGEX,
-} from "./constants";
-import type { VisitTree } from "./types";
-
-type MarkdownFile = {
-	file: string;
-	permalink?: string;
-	content?: string;
-};
+} from "./util";
+import { createLinkFromWikiLink, getWikiLinkTarget } from "./wiki-link";
 
 type PluginOptions = {
 	baseUrl?: string;
@@ -37,177 +24,162 @@ type PluginOptions = {
 	callout?: CalloutOptions;
 };
 
-const plugin = (options?: PluginOptions) => (tree: VisitTree) => {
-	const { baseUrl = "", markdownFiles } = options || {};
+type WikiLinkTarget = NonNullable<ReturnType<typeof getWikiLinkTarget>>;
 
-	const titleToUrl = (title: string) => {
-		const file = markdownFiles?.find((entry) => entry.file === `${title}.md`);
+const getParagraphChildren = ({ node }: { node: unknown }) => {
+	if (!isMarkdownNode(node) || !hasChildren(node)) {
+		return null;
+	}
 
-		if (file?.permalink) {
-			return `/${file.permalink}`;
-		}
+	return node.children;
+};
 
-		return `/${slugify(title, { lower: true })}`;
-	};
+const normalizeParagraphChildren = ({ children }: { children: unknown[] }) =>
+	children.filter(
+		(child) => !(isTextNode(child) && child.value.trim().length === 0),
+	);
 
-	visit<VisitTree, string>(tree, "paragraph", (node) => {
-		if (!isMarkdownNode(node) || !hasChildren(node)) {
-			return;
-		}
+const getEmbedTargetFromParagraph = ({ node }: { node: unknown }) => {
+	const children = getParagraphChildren({ node });
 
-		const markdown = toMarkdown(node, {
-			extensions: [gfmFootnoteToMarkdown(), gfmStrikethroughToMarkdown],
-		});
-		const paragraph = String(
-			unified().use(remarkParse).use(remarkHtml).processSync(markdown),
-		).replace(/&#x26;|&#38;/g, "&");
-		const children = node.children ?? [];
+	if (!children) {
+		return null;
+	}
 
-		if (paragraph.match(EMBED_LINK_REGEX)) {
-			const html = paragraph.replace(EMBED_LINK_REGEX, (embedLink, link) => {
-				if (hasInlineCode({ children, value: embedLink })) {
-					return embedLink;
-				}
+	const normalized = normalizeParagraphChildren({ children });
 
-				const file = markdownFiles?.find(
-					(entry) => entry.file === `${link}.md`,
-				);
+	if (normalized.length !== 2) {
+		return null;
+	}
 
-				if (file?.content) {
-					const content = remark()
-						.use(remarkFrontmatter)
-						.use(remarkGfm)
-						.use(remarkHtml)
-						.processSync(file.content);
-					return `<div class="embed-note">${content}</div>`;
-				}
+	const [first, second] = normalized;
 
-				return '<div class="embed-note not-found">Note not found</div>';
-			});
+	if (!isTextNode(first) || first.value.trim() !== "!") {
+		return null;
+	}
 
-			if (html === paragraph) {
+	const target = getWikiLinkTarget({ node: second });
+
+	if (!target || !target.page || target.anchor || target.anchorType) {
+		return null;
+	}
+
+	return target;
+};
+
+const createEmbedHtml = ({
+	target,
+	markdownFiles,
+}: {
+	target: WikiLinkTarget;
+	markdownFiles?: MarkdownFile[];
+}) => {
+	const file = markdownFiles?.find(
+		(entry) => entry.file === `${target.page}.md`,
+	);
+
+	if (file?.content) {
+		const content = remark()
+			.use(remarkFrontmatter)
+			.use(remarkGfm)
+			.use(remarkHtml)
+			.processSync(file.content);
+		return `<div class="embed-note">${content}</div>`;
+	}
+
+	return '<div class="embed-note not-found">Note not found</div>';
+};
+
+function plugin(this: any, options?: PluginOptions) {
+	const data = this.data();
+
+	(data.micromarkExtensions ??= []).push(
+		wikiLink({ aliasDivider: "|" }),
+		pandocMark(),
+	);
+	(data.fromMarkdownExtensions ??= []).push(
+		wikiLinkFromMarkdown(),
+		markFromMarkdown,
+	);
+
+	return (tree: VisitTree) => {
+		const { baseUrl = "", markdownFiles } = options || {};
+
+		visit<VisitTree, string>(tree, "paragraph", (node) => {
+			const target = getEmbedTargetFromParagraph({ node });
+
+			if (!target) {
 				return;
 			}
 
-			removeChildren({ node });
+			const html = createEmbedHtml({ target, markdownFiles });
 
-			Object.assign(node, { type: "html", value: html });
-			return;
-		}
-
-		if (paragraph.match(BRACKET_LINK_REGEX)) {
-			const html = paragraph.replace(
-				BRACKET_LINK_REGEX,
-				// eslint-disable-next-line complexity
-				(bracketLink, link, heading, text) => {
-					const href = titleToUrl(link);
-					const fullHref = baseUrl + href;
-					const isNotFound =
-						markdownFiles &&
-						!markdownFiles.find((entry) => entry.file === `${link}.md`);
-
-					if (hasInlineCode({ children, value: bracketLink })) {
-						return bracketLink;
-					}
-
-					if (heading && text) {
-						return `<a href="${fullHref}#${slugify(heading, { lower: true })}" title="${text}"${isNotFound ? ' class="not-found"' : ""}>${text}</a>`;
-					}
-
-					if (heading) {
-						return `<a href="${fullHref}#${slugify(heading, { lower: true })}" title="${link}"${isNotFound ? ' class="not-found"' : ""}>${link}</a>`;
-					}
-
-					if (text) {
-						return `<a href="${fullHref}" title="${text}"${isNotFound ? ' class="not-found"' : ""}>${text}</a>`;
-					}
-
-					return `<a href="${fullHref}" title="${link}"${isNotFound ? ' class="not-found"' : ""}>${link}</a>`;
-				},
-			);
-
-			if (html === paragraph) {
-				return;
-			}
-
-			removeChildren({ node });
-
-			Object.assign(node, { type: "html", value: html });
-			return;
-		}
-
-		if (paragraph.match(HEADING_REGEX)) {
-			const match = HEADING_REGEX.exec(paragraph);
-
-			if (match?.[1]) {
-				const heading = match[1];
-				const html = `<a href="#${slugify(heading, { remove: /[.,]/g, lower: true })}" title="${heading}">${heading}</a>`;
-				removeChildren({ node });
-				Object.assign(node, { type: "html", value: html });
-				return;
-			}
-		}
-
-		return;
-	});
-
-	visit<VisitTree, string>(tree, "blockquote", (node, index, parent) => {
-		if (!parent || !hasChildren(parent) || typeof index !== "number") {
-			return;
-		}
-
-		const callout = createCalloutNode({
-			blockquote: node,
-			options: options?.callout,
-		});
-
-		if (!callout) {
-			return;
-		}
-
-		parent.children.splice(index, 1, callout);
-
-		return;
-	});
-
-	visit<VisitTree, string>(tree, "paragraph", (node) => {
-		const paragraph = mdastToString(node);
-		const highlightRegex = /==(.*)==/g;
-
-		if (paragraph.match(highlightRegex)) {
 			if (!hasChildren(node)) {
 				return;
 			}
 
-			const children = node.children ?? [];
-			const html = paragraph.replace(highlightRegex, (markdown, text) => {
-				if (hasInlineCode({ children, value: markdown })) {
-					return markdown;
-				}
+			removeChildren({ node });
+			Object.assign(node, { type: "html", value: html });
+		});
 
-				if (
-					children.some(
-						(child) => isStrongNode(child) && text === mdastToString(child),
-					)
-				) {
-					return `<mark><b>${text}</b></mark>`;
-				}
-
-				return `<mark>${text}</mark>`;
-			});
-
-			if (html === paragraph) {
+		visit<VisitTree, string>(tree, "wikiLink", (node, index, parent) => {
+			if (!parent || !hasChildren(parent) || typeof index !== "number") {
 				return;
 			}
 
-			removeChildren({ node });
+			const linkNode = createLinkFromWikiLink({
+				node,
+				baseUrl,
+				markdownFiles,
+			});
 
-			Object.assign(node, { type: "html", value: `<p>${html}</p>` });
+			if (!linkNode) {
+				return;
+			}
+
+			parent.children.splice(index, 1, linkNode);
 			return;
-		}
+		});
 
-		return;
-	});
-};
+		visit<VisitTree, string>(tree, "blockquote", (node, index, parent) => {
+			if (!parent || !hasChildren(parent) || typeof index !== "number") {
+				return;
+			}
+
+			const callout = createCalloutNode({
+				blockquote: node,
+				options: options?.callout,
+			});
+
+			if (!callout) {
+				return;
+			}
+
+			parent.children.splice(index, 1, callout);
+
+			return;
+		});
+
+		visit<VisitTree, string>(tree, "mark", (node, index, parent) => {
+			if (!parent || !hasChildren(parent) || typeof index !== "number") {
+				return;
+			}
+
+			if (!isMarkdownNode(node) || !hasChildren(node)) {
+				return;
+			}
+
+			const markNode: MdxJsxTextElement = {
+				type: "mdxJsxTextElement",
+				name: "mark",
+				attributes: [],
+				children: node.children,
+			};
+
+			parent.children.splice(index, 1, markNode);
+			return;
+		});
+	};
+}
 
 export default plugin;
