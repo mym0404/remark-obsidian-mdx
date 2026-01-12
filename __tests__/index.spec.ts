@@ -3,26 +3,12 @@ import { remark } from "remark";
 import remarkHtml from "remark-html";
 import { expect, test } from "vitest";
 import plugin from "../src/index";
-
-type MarkdownNode = Parameters<typeof mdastToString>[0];
-
-type MdxJsxAttribute = {
-	type: "mdxJsxAttribute";
-	name: string;
-	value: string;
-};
-
-type MdxJsxFlowElement = {
-	type: "mdxJsxFlowElement";
-	name: string;
-	attributes: MdxJsxAttribute[];
-	children: unknown[];
-};
-
-type RootNode = {
-	type: "root";
-	children: unknown[];
-};
+import type {
+	MarkdownNode,
+	MdxJsxAttribute,
+	MdxJsxFlowElement,
+	RootNode,
+} from "../src/types";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === "object" && value !== null;

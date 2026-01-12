@@ -1,3 +1,4 @@
+import type { Blockquote, Node, Nodes, Parent } from "mdast";
 import { toString as mdastToString } from "mdast-util-to-string";
 import {
 	hasChildren,
@@ -8,18 +9,13 @@ import {
 	type ParagraphNode,
 } from "./ast";
 import { CALLOUT_REGEX } from "./constants";
+import type { MdxJsxAttribute, VisitTreeNode } from "./types";
 
 export type CalloutOptions = {
 	componentName?: string;
 	typeMap?: Record<string, string>;
 	typePropName?: string;
 	defaultType?: string;
-};
-
-type MdxJsxAttribute = {
-	type: "mdxJsxAttribute";
-	name: string;
-	value: string;
 };
 
 const DEFAULT_CALLOUT_TYPE_MAP = {
@@ -168,7 +164,7 @@ export const createCalloutNode = ({
 }: {
 	blockquote: unknown;
 	options?: CalloutOptions;
-}) => {
+}): VisitTreeNode | null => {
 	if (!isMarkdownNode(blockquote)) {
 		return null;
 	}
@@ -218,5 +214,5 @@ export const createCalloutNode = ({
 			typePropName,
 		}),
 		children: calloutChildren,
-	};
+	} as VisitTreeNode;
 };

@@ -23,6 +23,7 @@ import {
 	EMBED_LINK_REGEX,
 	HEADING_REGEX,
 } from "./constants";
+import type { VisitTree } from "./types";
 
 type MarkdownFile = {
 	file: string;
@@ -34,12 +35,6 @@ type PluginOptions = {
 	baseUrl?: string;
 	markdownFiles?: MarkdownFile[];
 	callout?: CalloutOptions;
-};
-
-type VisitTreeNode = Parameters<typeof visit>[0];
-
-type VisitTree = VisitTreeNode & {
-	children: VisitTreeNode[];
 };
 
 const plugin = (options?: PluginOptions) => (tree: VisitTree) => {
