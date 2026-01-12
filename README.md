@@ -1,6 +1,6 @@
 # remark-obsidian-mdx
 
-> This plugin is built on [remark-obsidian](https://github.com/johackim/remark-obsidian)
+> This plugin is inspired by [remark-obsidian](https://github.com/johackim/remark-obsidian)
 
 > [!IMPORTANT]
 > This project is under developing.
