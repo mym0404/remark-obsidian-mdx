@@ -1,4 +1,6 @@
-# remark-obsidian
+# remark-obsidian-mdx
+
+> This plugin is built on [remark-obsidian](https://github.com/johackim/remark-obsidian)
 
 [![Version](https://img.shields.io/github/tag/johackim/remark-obsidian.svg?label=Version&style=flat&colorA=2B323B&colorB=1e2329)](https://github.com/johackim/remark-obsidian/releases)
 [![License](https://img.shields.io/badge/license-GPL%20v3%2B-yellow.svg?label=License&style=flat&colorA=2B323B&colorB=1e2329)](https://raw.githubusercontent.com/johackim/remark-obsidian/master/LICENSE.txt)
@@ -23,7 +25,7 @@ Remark plugin to support Obsidian markdown syntax.
 ## 🚀 Installation
 
 ```bash
-yarn add -D remark-obsidian
+yarn add -D remark-obsidian-mdx
 ```
 
 ## 📦 Usage
@@ -32,9 +34,9 @@ With [remark](https://github.com/remarkjs/remark/) :
 
 ```js
 import { remark } from 'remark';
-import remarkObsidian from 'remark-obsidian';
+import remarkObsidianMdx from 'remark-obsidian-mdx';
 
-const html = String(await remark().use(remarkObsidian).process('[[Hello world]]'));
+const html = String(await remark().use(remarkObsidianMdx).process('[[Hello world]]'));
 console.log(html); // <a href="/hello-world">Hello world</a>
 ```
 
