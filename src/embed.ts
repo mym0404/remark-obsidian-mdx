@@ -22,26 +22,27 @@ type EmbedRenderContextBase = {
 	target: EmbedTarget;
 	contentRoot?: string;
 	resolvedUrl?: string;
+	alias?: string;
 };
 
-export type EmbedRenderNoteContext = EmbedRenderContextBase & {
+type EmbedRenderNoteContext = EmbedRenderContextBase & {
 	kind: "note";
 	isResolved: true;
 };
 
-export type EmbedRenderImageContext = EmbedRenderContextBase & {
+type EmbedRenderImageContext = EmbedRenderContextBase & {
 	kind: "image";
 	imageWidth?: number;
 	imageHeight?: number;
 	isResolved: true;
 };
 
-export type EmbedRenderVideoContext = EmbedRenderContextBase & {
+type EmbedRenderVideoContext = EmbedRenderContextBase & {
 	kind: "video";
 	isResolved: true;
 };
 
-export type EmbedRenderNotFoundContext = EmbedRenderContextBase & {
+type EmbedRenderNotFoundContext = EmbedRenderContextBase & {
 	kind: "note" | "image" | "video";
 	isResolved: false;
 };
@@ -208,8 +209,15 @@ const buildVideoNode = ({
 };
 
 const buildNotFoundNode = (target: EmbedTarget) => ({
-	type: "text",
-	value: `Embed not found: ${target.page}`,
+	type: "mdxJsxFlowElement",
+	name: "div",
+	attributes: [],
+	children: [
+		{
+			type: "text",
+			value: `Embed not found: ${target.page}`,
+		},
+	],
 });
 
 const getImageDimensions = (resolvedPath?: string) => {
@@ -234,12 +242,14 @@ export const renderEmbedNode = ({
 	contentRoot,
 	resolvedPath,
 	resolvedUrl,
+	alias,
 }: {
 	target: EmbedTarget;
 	embedRendering?: EmbedRenderingOptions;
 	contentRoot?: string;
 	resolvedPath?: string;
 	resolvedUrl?: string;
+	alias?: string;
 }) => {
 	const kind = getEmbedKind(target);
 	if (kind === "unsupported") {
@@ -257,6 +267,7 @@ export const renderEmbedNode = ({
 			target,
 			contentRoot,
 			resolvedUrl,
+			alias,
 			kind,
 			isResolved: false,
 		});
@@ -280,6 +291,7 @@ export const renderEmbedNode = ({
 			target,
 			contentRoot,
 			resolvedUrl,
+			alias,
 			imageWidth,
 			imageHeight,
 			kind,
@@ -300,6 +312,7 @@ export const renderEmbedNode = ({
 			target,
 			contentRoot,
 			resolvedUrl,
+			alias,
 			kind,
 			isResolved: true,
 		});
@@ -315,6 +328,7 @@ export const renderEmbedNode = ({
 			target,
 			contentRoot,
 			resolvedUrl,
+			alias,
 			kind,
 			isResolved: true,
 		});

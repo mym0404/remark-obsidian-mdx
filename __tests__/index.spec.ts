@@ -39,6 +39,13 @@ const isMdxJsxFlowElement = (value: unknown): value is MdxJsxFlowElement =>
 const isRootNode = (value: unknown): value is RootNode =>
 	isRecord(value) && value.type === "root" && Array.isArray(value.children);
 
+const isParagraphNode = (
+	value: unknown,
+): value is { type: "paragraph"; children: unknown[] } =>
+	isRecord(value) &&
+	value.type === "paragraph" &&
+	Array.isArray(value.children);
+
 const hasChildren = (value: unknown): value is ChildrenNodeWithChildren =>
 	isRecord(value) && Array.isArray(value.children);
 
@@ -144,6 +151,12 @@ const isEmbedNode = (value: unknown): value is MdxJsxFlowElement =>
 const findEmbedNodes = ({ tree }: { tree: unknown }) =>
 	collectNodes<MdxJsxFlowElement>({ node: tree, isMatch: isEmbedNode });
 
+const isDivFlowElement = (value: unknown): value is MdxJsxFlowElement =>
+	isMdxJsxFlowElement(value) && value.name === "div";
+
+const findDivFlowElements = ({ tree }: { tree: unknown }) =>
+	collectNodes<MdxJsxFlowElement>({ node: tree, isMatch: isDivFlowElement });
+
 const createEmbedNode = ({
 	name,
 	attributes,
@@ -160,6 +173,12 @@ const createEmbedNode = ({
 
 	return node;
 };
+
+const createTextNode = (value: string) =>
+	({
+		type: "text",
+		value,
+	}) as const;
 
 const getNodeText = ({ node }: { node: ChildrenNodeWithChildren }) =>
 	node.children
@@ -556,6 +575,36 @@ test("Should pass resolved url to embed rendering", async () => {
 	expect(receivedUrl).toBe("/notes/ProjectA.md");
 });
 
+test("Should pass embed alias to embed rendering", async () => {
+	const text = "![[ProjectA|Alias]]";
+	const contentRoot = path.resolve(__dirname, "fixtures", "vault");
+	let receivedAlias: string | undefined;
+	const options = {
+		contentRoot,
+		embedRendering: {
+			note: (context: EmbedRenderContext) => {
+				receivedAlias = context.alias;
+				return createEmbedNode({
+					name: "EmbedNote",
+					attributes: [
+						{
+							type: "mdxJsxAttribute",
+							name: "page",
+							value: context.target.page,
+						},
+					],
+				});
+			},
+		},
+	};
+
+	const tree = await getTree({ text, options });
+	const embedNodes = findEmbedNodes({ tree });
+
+	expect(embedNodes).toHaveLength(1);
+	expect(receivedAlias).toBe("Alias");
+});
+
 test("Should apply contentRootUrlPrefix to embed rendering urls", async () => {
 	const text = "![[ProjectA]]";
 	const contentRoot = path.resolve(__dirname, "fixtures", "vault");
@@ -611,6 +660,65 @@ test("Should support inline embeds", async () => {
 	const embedNodes = findEmbedNodes({ tree });
 
 	expect(embedNodes).toHaveLength(1);
+});
+
+test("Should wrap note embeds as flow element when standalone", async () => {
+	const text = "![[ProjectA]]";
+	const contentRoot = path.resolve(__dirname, "fixtures", "vault");
+	const options = {
+		contentRoot,
+		embedRendering: {
+			note: () => createTextNode("Note embed"),
+		},
+	};
+
+	const tree = await getTree({ text, options });
+	const divs = findDivFlowElements({ tree });
+
+	expect(divs).toHaveLength(1);
+	expect(divs[0].children).toContainEqual({
+		type: "text",
+		value: "Note embed",
+	});
+	expect(isRootNode(tree) && tree.children.some(isParagraphNode)).toBe(false);
+});
+
+test("Should wrap notFound embeds as flow element when standalone", async () => {
+	const text = "![[Missing]]";
+	const contentRoot = path.resolve(__dirname, "fixtures", "vault");
+	const options = {
+		contentRoot,
+		embedRendering: {
+			notFound: () => createTextNode("Missing embed"),
+		},
+	};
+
+	const tree = await getTree({ text, options });
+	const divs = findDivFlowElements({ tree });
+
+	expect(divs).toHaveLength(1);
+	expect(divs[0].children).toContainEqual({
+		type: "text",
+		value: "Missing embed",
+	});
+	expect(isRootNode(tree) && tree.children.some(isParagraphNode)).toBe(false);
+});
+
+test("Should keep inline note embeds inside paragraph", async () => {
+	const text = "hello ![[ProjectA]] world";
+	const contentRoot = path.resolve(__dirname, "fixtures", "vault");
+	const options = {
+		contentRoot,
+		embedRendering: {
+			note: () => createTextNode("Inline note"),
+		},
+	};
+
+	const tree = await getTree({ text, options });
+	const divs = findDivFlowElements({ tree });
+
+	expect(divs).toHaveLength(0);
+	expect(isRootNode(tree) && tree.children.some(isParagraphNode)).toBe(true);
 });
 
 test("Should transform resolved embed urls", async () => {

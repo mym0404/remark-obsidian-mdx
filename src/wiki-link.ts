@@ -18,7 +18,11 @@ const getWikiLinkValue = ({ node }: { node: WikiLinkNode }) => {
 	return value;
 };
 
-const getWikiLinkAlias = ({ node }: { node: WikiLinkNode }) => {
+export const getWikiLinkAlias = ({ node }: { node: unknown }) => {
+	if (!isWikiLinkNode(node)) {
+		return "";
+	}
+
 	const alias =
 		typeof node.data?.alias === "string" ? node.data.alias.trim() : "";
 	return alias;

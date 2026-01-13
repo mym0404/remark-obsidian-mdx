@@ -1,5 +1,5 @@
 import { highlightMark } from "micromark-extension-highlight-mark";
-import { visit } from "unist-util-visit";
+import { SKIP, visit } from "unist-util-visit";
 import { type CalloutOptions, createCalloutNode } from "./callout";
 import {
 	buildContentResolverFromRoot,
@@ -10,7 +10,9 @@ import {
 import {
 	type EmbedPathTransformContext,
 	type EmbedRenderingOptions,
+	type EmbedRenderResult,
 	type EmbedTarget,
+	getEmbedKind,
 	renderEmbedNode,
 	resolveEmbedUrl,
 } from "./embed";
@@ -21,6 +23,7 @@ import type { MdxJsxTextElement, VisitTree } from "./types";
 import { hasChildren, isMarkdownNode } from "./util";
 import {
 	createLinkFromWikiLink,
+	getWikiLinkAlias,
 	getWikiLinkEmbed,
 	getWikiLinkTarget,
 	type WikiLinkPathTransformContext,
@@ -140,6 +143,72 @@ function plugin(this: any, options: PluginOptions) {
 			parent.children.splice(index, 1, node as VisitTree["children"][number]);
 		};
 
+		const isMdxFlowElement = (node: { type?: string }) =>
+			node.type === "mdxJsxFlowElement";
+
+		const wrapAsFlowElement = (node: unknown) => ({
+			type: "mdxJsxFlowElement",
+			name: "div",
+			attributes: [],
+			children: [node],
+		});
+
+		visit<VisitTree, string>(tree, "paragraph", (node, index, parent) => {
+			if (!parent || !hasChildren(parent) || typeof index !== "number") {
+				return;
+			}
+
+			if (!hasChildren(node) || node.children.length !== 1) {
+				return;
+			}
+
+			const [onlyChild] = node.children;
+			if (!getWikiLinkEmbed({ node: onlyChild })) {
+				return;
+			}
+
+			const target = getWikiLinkTarget({ node: onlyChild });
+			if (!target || target.anchor || target.anchorType) {
+				return;
+			}
+			const alias = getWikiLinkAlias({ node: onlyChild });
+
+			const resolvedPath = resolveTargetPath({
+				target,
+				resolver,
+			});
+			const resolvedUrl = resolveEmbedUrl({
+				target,
+				contentRoot,
+				contentRootUrlPrefix,
+				resolvedPath: resolvedPath ?? undefined,
+				pathTransform: embedingPathTransform,
+			});
+			const kind = getEmbedKind(target);
+			const isResolved = Boolean(resolvedPath);
+
+			if (kind !== "note" && isResolved) {
+				return;
+			}
+
+			const rendered = renderEmbedNode({
+				target,
+				embedRendering,
+				contentRoot,
+				resolvedPath: resolvedPath ?? undefined,
+				resolvedUrl,
+				alias,
+			});
+
+			if (rendered) {
+				const replacement = isMdxFlowElement(rendered)
+					? rendered
+					: wrapAsFlowElement(rendered);
+				replaceNode(index, parent, replacement);
+				return SKIP;
+			}
+		});
+
 		visit<VisitTree, string>(tree, "wikiLink", (node, index, parent) => {
 			if (!parent || !hasChildren(parent) || typeof index !== "number") {
 				return;
@@ -151,6 +220,7 @@ function plugin(this: any, options: PluginOptions) {
 				if (!target || target.anchor || target.anchorType) {
 					return;
 				}
+				const alias = getWikiLinkAlias({ node });
 
 				const resolvedPath = resolveTargetPath({
 					target,
@@ -170,6 +240,7 @@ function plugin(this: any, options: PluginOptions) {
 					contentRoot,
 					resolvedPath: resolvedPath ?? undefined,
 					resolvedUrl,
+					alias,
 				});
 
 				if (rendered) {

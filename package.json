@@ -24,7 +24,7 @@
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome check",
 		"format": "biome check --write --unsafe",
-		"t": "pnpm lint && pnpm typecheck"
+		"t": "pnpm lint && pnpm typecheck && pnpm test"
 	},
 	"author": "MJ Studio",
 	"description": "Remark plugin to support Obsidian markdown syntax",

@@ -1,5 +1,7 @@
 # Repository Guidelines
 
+## Create tests first and start implementing
+
 ## Project Structure & Module Organization
 - `src/` contains the remark plugin implementation and helpers. Key files include `src/index.ts` (plugin entry), `src/callout.ts` (callout transform), `src/wiki-link.ts` (wiki link parsing/link nodes), `src/mark.ts` (== highlight parser), and `src/ast.ts` / `src/types.ts` (shared utilities and types).
 - Embed parsing/rendering + URL resolution helpers live in `src/embed.ts`; content resolution utilities live in `src/content-resolver/` with a minimal basename/path-hint resolver (no cache).
