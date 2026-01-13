@@ -7,6 +7,8 @@
 
 Remark plugin to support Obsidian markdown syntax with MDX output.
 
+A blog built with this plugin is available at https://english.mjstudio.net, and you can see a real-world usage example at https://github.com/mym0404/english-blog.
+
 ![preview](https://cdn.jsdelivr.net/gh/mym0404/image-archive/20260113195635356.png)
 
 
