@@ -1,5 +1,7 @@
 # remark-obsidian-mdx
 
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/07ee2c5b-e974-4554-a299-a371cf7555fb" />
+
 > This plugin is inspired by [remark-obsidian](https://github.com/johackim/remark-obsidian)
 
 [![Version](https://img.shields.io/github/tag/mym0404/remark-obsidian-mdx.svg?label=Version&style=flat&colorA=2B323B&colorB=1e2329)](https://github.com/mym0404/remark-obsidian-mdx/releases)
