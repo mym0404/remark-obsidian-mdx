@@ -17,6 +17,7 @@ import type {
 	RootNode,
 } from "../src/types";
 import { isRecord } from "../src/util";
+import type { WikiLinkPathTransformContext } from "../src/wiki-link";
 
 const isMarkdownNode = (value: unknown): value is MarkdownNode =>
 	isRecord(value) && "type" in value;
@@ -85,14 +86,19 @@ const collectNodes = <T>({
 	return results;
 };
 
+const defaultContentRoot = path.resolve(__dirname, "fixtures", "vault");
+
 const getTree = async ({
 	text,
 	options,
 }: {
 	text: string;
-	options?: Parameters<typeof plugin>[0];
+	options?: Partial<Parameters<typeof plugin>[0]>;
 }) => {
-	const processor = remark().use(plugin, options);
+	const processor = remark().use(plugin, {
+		contentRoot: defaultContentRoot,
+		...options,
+	});
 	return processor.run(processor.parse(text));
 };
 
@@ -299,7 +305,7 @@ test("Should ignore highlights inside code blocks", async () => {
 test("Should support > [!CALLOUT]", async () => {
 	const text = ["> [!NOTE]", "> This is a note"].join("\n");
 
-	const processor = remark().use(plugin);
+	const processor = remark().use(plugin, { contentRoot: defaultContentRoot });
 	const tree = await processor.run(processor.parse(text));
 	const callout = findCalloutNode({ tree });
 
@@ -318,7 +324,7 @@ test("Should support > [!CALLOUT]", async () => {
 test("Should support > [!CALLOUT] with custom title", async () => {
 	const text = ["> [!NOTE] Custom title", "> This is a note"].join("\n");
 
-	const processor = remark().use(plugin);
+	const processor = remark().use(plugin, { contentRoot: defaultContentRoot });
 	const tree = await processor.run(processor.parse(text));
 	const callout = findCalloutNode({ tree });
 
@@ -344,7 +350,7 @@ test("Should support > [!CALLOUT] with multiple lines", async () => {
 		"\n",
 	);
 
-	const processor = remark().use(plugin);
+	const processor = remark().use(plugin, { contentRoot: defaultContentRoot });
 	const tree = await processor.run(processor.parse(text));
 	const callout = findCalloutNode({ tree });
 
@@ -483,6 +489,43 @@ test("Should resolve wiki links using content index", async () => {
 	expect(link.url).toBe("/notes/ProjectA");
 });
 
+test("Should apply contentRootUrlPrefix to wiki links", async () => {
+	const text = "[[ProjectA]]";
+	const contentRoot = path.resolve(__dirname, "fixtures", "vault");
+	const options = {
+		contentRoot,
+		contentRootUrlPrefix: "/docs",
+	};
+
+	const tree = await getTree({ text, options });
+	const links = findLinkNodes({ tree });
+	const [link] = links;
+
+	expect(links).toHaveLength(1);
+	expect(link.url).toBe("/docs/notes/ProjectA");
+});
+
+test("Should transform resolved wiki link urls", async () => {
+	const text = "[[ProjectA]]";
+	const contentRoot = path.resolve(__dirname, "fixtures", "vault");
+	const options = {
+		contentRoot,
+		wikiLinkPathTransform: ({ resolvedUrl }: WikiLinkPathTransformContext) => {
+			if (!resolvedUrl) {
+				return null;
+			}
+			return resolvedUrl.replace("/notes/", "/docs/");
+		},
+	};
+
+	const tree = await getTree({ text, options });
+	const links = findLinkNodes({ tree });
+	const [link] = links;
+
+	expect(links).toHaveLength(1);
+	expect(link.url).toBe("/docs/ProjectA");
+});
+
 test("Should pass resolved url to embed rendering", async () => {
 	const text = "![[ProjectA]]";
 	const contentRoot = path.resolve(__dirname, "fixtures", "vault");
@@ -510,7 +553,38 @@ test("Should pass resolved url to embed rendering", async () => {
 	const embedNodes = findEmbedNodes({ tree });
 
 	expect(embedNodes).toHaveLength(1);
-	expect(receivedUrl).toBe("/notes/ProjectA");
+	expect(receivedUrl).toBe("/notes/ProjectA.md");
+});
+
+test("Should apply contentRootUrlPrefix to embed rendering urls", async () => {
+	const text = "![[ProjectA]]";
+	const contentRoot = path.resolve(__dirname, "fixtures", "vault");
+	let receivedUrl: string | undefined;
+	const options = {
+		contentRoot,
+		contentRootUrlPrefix: "/docs",
+		embedRendering: {
+			note: (context: EmbedRenderContext) => {
+				receivedUrl = context.resolvedUrl;
+				return createEmbedNode({
+					name: "EmbedNote",
+					attributes: [
+						{
+							type: "mdxJsxAttribute",
+							name: "page",
+							value: context.target.page,
+						},
+					],
+				});
+			},
+		},
+	};
+
+	const tree = await getTree({ text, options });
+	const embedNodes = findEmbedNodes({ tree });
+
+	expect(embedNodes).toHaveLength(1);
+	expect(receivedUrl).toBe("/docs/notes/ProjectA.md");
 });
 
 test("Should support inline embeds", async () => {
@@ -546,13 +620,10 @@ test("Should transform resolved embed urls", async () => {
 		contentRoot,
 		embedingPathTransform: ({
 			kind,
-			resolvedUrlWithExtension,
+			resolvedUrl,
 		}: EmbedPathTransformContext) => {
-			if (kind === "image" && resolvedUrlWithExtension) {
-				return resolvedUrlWithExtension.replace(
-					"/assets/images/",
-					"/static/img/",
-				);
+			if (kind === "image" && resolvedUrl) {
+				return resolvedUrl.replace("/assets/images/", "/static/img/");
 			}
 			return null;
 		},
@@ -582,7 +653,11 @@ test("Should ignore directive", async () => {
 hello
 :::`.trim();
 
-	const output = String(await remark().use(plugin).process(text));
+	const output = String(
+		await remark()
+			.use(plugin, { contentRoot: defaultContentRoot })
+			.process(text),
+	);
 
 	expect(output).toContain(text);
 });

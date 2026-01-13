@@ -4,6 +4,7 @@ import { type CalloutOptions, createCalloutNode } from "./callout";
 import {
 	buildContentResolverFromRoot,
 	parseObsidianLink,
+	resolveContentUrl,
 	resolveLink,
 } from "./content-resolver";
 import {
@@ -12,7 +13,7 @@ import {
 	type EmbedRenderResult,
 	type EmbedTarget,
 	renderEmbedNode,
-	resolveEmbedUrls,
+	resolveEmbedUrl,
 } from "./embed";
 import { markFromMarkdown } from "./mark";
 import { wikiLinkFromMarkdown } from "./micromark-extension/mdast-wiki-link";
@@ -23,20 +24,19 @@ import {
 	createLinkFromWikiLink,
 	getWikiLinkEmbed,
 	getWikiLinkTarget,
+	type WikiLinkPathTransformContext,
 } from "./wiki-link";
 export type PluginOptions = {
 	callout?: CalloutOptions;
 	embedRendering?: EmbedRenderingOptions;
-	contentRoot?: string;
-	resolvedUrlWithExtension?: boolean;
-	embedingPathTransform?: (context: EmbedPathTransformContext) =>
-		| string
-		| {
-				resolvedUrl?: string;
-				resolvedUrlWithExtension?: string;
-		  }
-		| null
-		| undefined;
+	contentRoot: string;
+	contentRootUrlPrefix?: string;
+	embedingPathTransform?: (
+		context: EmbedPathTransformContext,
+	) => string | null | undefined;
+	wikiLinkPathTransform?: (
+		context: WikiLinkPathTransformContext,
+	) => string | null | undefined;
 };
 
 export type {
@@ -51,6 +51,7 @@ export {
 	createContentResolverIndex,
 	parseObsidianLink,
 	removeFileFromResolver,
+	resolveContentUrl,
 	resolveLink,
 } from "./content-resolver";
 export type {
@@ -60,52 +61,15 @@ export type {
 	EmbedRenderResult,
 	EmbedTarget,
 } from "./embed";
-
-const normalizePath = (value: string) =>
-	value.replace(/\\/g, "/").replace(/\/+/g, "/").trim();
-
-const toLinkUrl = ({
-	resolvedPath,
-	contentRoot,
-	withExtension,
-}: {
-	resolvedPath: string;
-	contentRoot?: string;
-	withExtension?: boolean;
-}) => {
-	const normalizedPath = normalizePath(resolvedPath);
-
-	if (!contentRoot) {
-		const withoutLeading = normalizedPath.replace(/^\/+/, "");
-		if (withExtension) {
-			return `/${withoutLeading}`;
-		}
-		return `/${withoutLeading.replace(/\.[^/.]+$/, "")}`;
-	}
-
-	const normalizedRoot = normalizePath(contentRoot).replace(/\/$/, "");
-	const withoutRoot = normalizedPath.startsWith(normalizedRoot)
-		? normalizedPath.slice(normalizedRoot.length)
-		: normalizedPath;
-
-	const trimmed = withoutRoot.replace(/^\//, "");
-	if (withExtension) {
-		return `/${trimmed}`;
-	}
-	return `/${trimmed.replace(/\.[^/.]+$/, "")}`;
-};
+export type { WikiLinkPathTransformContext, WikiLinkTarget } from "./wiki-link";
 
 const resolveTargetPath = ({
 	target,
 	resolver,
 }: {
 	target: EmbedTarget;
-	resolver?: ReturnType<typeof buildContentResolverFromRoot>;
+	resolver: ReturnType<typeof buildContentResolverFromRoot>;
 }) => {
-	if (!resolver) {
-		return null;
-	}
-
 	const parsed = parseObsidianLink(`[[${target.page}]]`);
 
 	if (!parsed) {
@@ -115,7 +79,43 @@ const resolveTargetPath = ({
 	return resolveLink(resolver, parsed);
 };
 
-function plugin(this: any, options?: PluginOptions) {
+const resolveWikiLinkUrl = ({
+	target,
+	contentRoot,
+	contentRootUrlPrefix,
+	resolvedPath,
+	pathTransform,
+}: {
+	target: NonNullable<ReturnType<typeof getWikiLinkTarget>>;
+	contentRoot: string;
+	contentRootUrlPrefix?: string;
+	resolvedPath?: string;
+	pathTransform?: (
+		context: WikiLinkPathTransformContext,
+	) => string | null | undefined;
+}) => {
+	const resolvedUrl = resolvedPath
+		? resolveContentUrl({
+				resolvedPath,
+				contentRoot,
+				contentRootUrlPrefix,
+				withExtension: false,
+			})
+		: undefined;
+
+	const transformed = pathTransform?.({
+		target,
+		contentRoot,
+		resolvedUrl,
+	});
+	if (typeof transformed === "string") {
+		return transformed;
+	}
+
+	return resolvedUrl;
+};
+
+function plugin(this: any, options: PluginOptions) {
 	const data = this.data();
 
 	(data.micromarkExtensions ??= []).push(
@@ -131,12 +131,11 @@ function plugin(this: any, options?: PluginOptions) {
 		const {
 			embedRendering,
 			contentRoot,
-			resolvedUrlWithExtension,
+			contentRootUrlPrefix,
 			embedingPathTransform,
-		} = options || {};
-		const resolver = contentRoot
-			? buildContentResolverFromRoot(contentRoot)
-			: undefined;
+			wikiLinkPathTransform,
+		} = options;
+		const resolver = buildContentResolverFromRoot(contentRoot);
 
 		const replaceNode = (index: number, parent: VisitTree, node: unknown) => {
 			parent.children.splice(index, 1, node as VisitTree["children"][number]);
@@ -158,9 +157,10 @@ function plugin(this: any, options?: PluginOptions) {
 					target,
 					resolver,
 				});
-				const { resolvedUrl, resolvedUrlWithExtension } = resolveEmbedUrls({
+				const resolvedUrl = resolveEmbedUrl({
 					target,
 					contentRoot,
+					contentRootUrlPrefix,
 					resolvedPath: resolvedPath ?? undefined,
 					pathTransform: embedingPathTransform,
 				});
@@ -171,7 +171,6 @@ function plugin(this: any, options?: PluginOptions) {
 					contentRoot,
 					resolvedPath: resolvedPath ?? undefined,
 					resolvedUrl,
-					resolvedUrlWithExtension,
 				});
 
 				if (rendered) {
@@ -191,13 +190,13 @@ function plugin(this: any, options?: PluginOptions) {
 						resolver,
 					})
 				: null;
-			const resolvedUrl = resolvedPath
-				? toLinkUrl({
-						resolvedPath,
-						contentRoot,
-						withExtension: resolvedUrlWithExtension,
-					})
-				: undefined;
+			const resolvedUrl = resolveWikiLinkUrl({
+				target,
+				contentRoot,
+				contentRootUrlPrefix,
+				resolvedPath: resolvedPath ?? undefined,
+				pathTransform: wikiLinkPathTransform,
+			});
 
 			const linkNode = createLinkFromWikiLink({ node, resolvedUrl });
 

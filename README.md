@@ -74,6 +74,8 @@ const { value } = unified()
 
 ## Options
 
+### Example
+
 ```js
 import remarkObsidianMdx from "remark-obsidian-mdx";
 
@@ -109,6 +111,7 @@ remark().use(remarkObsidianMdx, {
     },
   },
   contentRoot: "/vault",
+  contentRootUrlPrefix: "/blog",
   embedRendering: {
     note: ({ target }) => ({
       type: "mdxJsxFlowElement",
@@ -138,32 +141,60 @@ remark().use(remarkObsidianMdx, {
       children: [],
     }),
   },
-  embedingPathTransform: ({ kind, resolvedUrlWithExtension }) => {
+  embedingPathTransform: ({ kind, resolvedUrl }) => {
     if (kind === "image" || kind === "video") {
-      return resolvedUrlWithExtension ?? null;
+      return resolvedUrl ?? null;
     }
     return null;
+  },
+  wikiLinkPathTransform: ({ resolvedUrl }) => {
+    if (!resolvedUrl) {
+      return null;
+    }
+    return resolvedUrl.replace("/notes/", "/docs/");
   },
 });
 ```
 
-Notes:
-- Wiki links and `==mark==` are parsed via micromark extensions injected by the plugin.
+### callout
+
 - `typeMap` fully replaces the default mapping when provided.
 - `typeMap` keys are normalized to lowercase.
 - Empty mapped values fall back to `defaultType`.
-- `embedRendering` controls how `![[...]]` is rendered. Heading (`#`) and block (`^`) embeds are ignored for now.
+
+### contentRoot
+
+- Required. Builds an on-disk index for resolving `[[...]]` and `![[...]]`.
+- Also passed to embed rendering for resolution checks.
+
+### contentRootUrlPrefix
+
+- Prepends a URL prefix for resolved paths without changing `contentRoot`.
+- Example: `contentRoot: "/vault/.content"` with `contentRootUrlPrefix: "/blog"` resolves `[[ai-revolution]]` to `/blog/ai-revolution`.
+
+### embedRendering
+
+- Controls how `![[...]]` is rendered. Heading (`#`) and block (`^`) embeds are ignored.
 - Unsupported embed types (non-note/image/video files) are ignored.
-- `contentRoot` is used to build an on-disk index for resolving `[[...]]` and `![[...]]`, and is also passed to embed rendering.
-- `embedRendering` receives `resolvedPath`, `resolvedUrl`, `resolvedUrlWithExtension`, and `imageWidth`/`imageHeight` when an image target is found (for images/videos, `resolvedUrl` includes the extension by default).
+- Receives `resolvedUrl` and `imageWidth`/`imageHeight` when available.
+- For embeds, `resolvedUrl` includes extensions by default.
 - If a target cannot be resolved under `contentRoot`, the default output is a plain text fallback. You can override this with `embedRendering.notFound`.
-- `resolvedUrlWithExtension` keeps the file extension in resolved URLs when set to true (default for image/video embeds).
-- `embedingPathTransform` lets you override resolved URLs based on embed kind and resolved path (return a string to override both URLs).
-- For embeds, `resolvedUrl` is preferred and already includes extensions for image/video.
-- For Next.js, map `img` to `Image` and coerce width/height to numbers (see example below).
-- If `embedRendering.image` is omitted, the plugin emits a standard `image` node with `data.hProperties.width/height` inferred from the file. If `embedRendering.video` is omitted, it emits a `video` MDX JSX node.
+- If `embedRendering.image` is omitted, the plugin emits a standard `image` node with `data.hProperties.width/height` inferred from the file.
+- If `embedRendering.video` is omitted, it emits a `video` MDX JSX node.
+
+### embedingPathTransform
+
+- Overrides resolved URLs for embeds based on embed kind.
+- Returning a string overrides `resolvedUrl`.
+
+### wikiLinkPathTransform
+
+- Overrides resolved URLs for `[[...]]` links.
+- Returning a string overrides `resolvedUrl`.
+- For wiki links, `resolvedUrl` excludes extensions by default.
 
 ### Next.js Image mapping
+If your vault stores images under `vault/assets/images`, you should serve them via a route like `app/assets/[[slug]].tsx` so the resolved URLs can be fetched by the app.
 
 ```tsx
 import Image from "next/image";

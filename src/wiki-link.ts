@@ -34,6 +34,16 @@ export const getWikiLinkEmbed = ({ node }: { node: unknown }) => {
 
 export type WikiAnchorType = "" | "#" | "^";
 
+export type WikiLinkTarget = { value: string } & ReturnType<
+	typeof parseWikiTarget
+>;
+
+export type WikiLinkPathTransformContext = {
+	target: WikiLinkTarget;
+	contentRoot: string;
+	resolvedUrl?: string;
+};
+
 export const parseWikiTarget = ({ value }: { value: string }) => {
 	const headingIndex = value.indexOf("#");
 	const blockIndex = value.indexOf("^");

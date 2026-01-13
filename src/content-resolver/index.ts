@@ -204,3 +204,50 @@ export const resolveLink = (
 	const sorted = [...filteredCandidates].sort();
 	return sorted[0];
 };
+
+export const resolveContentUrl = ({
+	resolvedPath,
+	contentRoot,
+	contentRootUrlPrefix = "",
+	withExtension,
+}: {
+	resolvedPath: string;
+	contentRoot: string;
+	contentRootUrlPrefix?: string;
+	withExtension?: boolean;
+}) => {
+	const normalizedPath = normalizePath(resolvedPath);
+	const normalizedPrefix = normalizePath(contentRootUrlPrefix).replace(
+		/^\/+|\/+$/g,
+		"",
+	);
+	const buildUrl = (value: string) => {
+		const trimmedValue = value.replace(/^\/+/, "");
+		if (!normalizedPrefix) {
+			return `/${trimmedValue}`;
+		}
+		if (!trimmedValue) {
+			return `/${normalizedPrefix}`;
+		}
+		return `/${normalizedPrefix}/${trimmedValue}`;
+	};
+
+	if (!contentRoot) {
+		const withoutLeading = normalizedPath.replace(/^\/+/, "");
+		if (withExtension) {
+			return buildUrl(withoutLeading);
+		}
+		return buildUrl(withoutLeading.replace(/\.[^/.]+$/, ""));
+	}
+
+	const normalizedRoot = normalizePath(contentRoot).replace(/\/$/, "");
+	const withoutRoot = normalizedPath.startsWith(normalizedRoot)
+		? normalizedPath.slice(normalizedRoot.length)
+		: normalizedPath;
+
+	const trimmed = withoutRoot.replace(/^\//, "");
+	if (withExtension) {
+		return buildUrl(trimmed);
+	}
+	return buildUrl(trimmed.replace(/\.[^/.]+$/, ""));
+};

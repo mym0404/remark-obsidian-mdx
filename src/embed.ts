@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import { imageSize } from "image-size";
+import { resolveContentUrl } from "./content-resolver";
 import type {
 	MarkdownNode,
 	MdxJsxFlowElement,
@@ -20,9 +21,7 @@ export type EmbedRenderResult =
 export type EmbedRenderContext = {
 	target: EmbedTarget;
 	contentRoot?: string;
-	resolvedPath?: string;
 	resolvedUrl?: string;
-	resolvedUrlWithExtension?: string;
 	imageWidth?: number;
 	imageHeight?: number;
 	kind: "note" | "image" | "video";
@@ -32,10 +31,8 @@ export type EmbedRenderContext = {
 export type EmbedPathTransformContext = {
 	kind: ReturnType<typeof getEmbedKind>;
 	target: EmbedTarget;
-	contentRoot?: string;
-	resolvedPath?: string;
+	contentRoot: string;
 	resolvedUrl?: string;
-	resolvedUrlWithExtension?: string;
 };
 
 export type EmbedRenderingOptions = {
@@ -86,125 +83,51 @@ export const getEmbedKind = (target: EmbedTarget) => {
 	return "unsupported";
 };
 
-const normalizePath = (value: string) =>
-	value.replace(/\\/g, "/").replace(/\/+/g, "/").trim();
-
-const toContentUrl = ({
-	resolvedPath,
-	contentRoot,
-	withExtension,
-}: {
-	resolvedPath: string;
-	contentRoot?: string;
-	withExtension?: boolean;
-}) => {
-	const normalizedPath = normalizePath(resolvedPath);
-
-	if (!contentRoot) {
-		const withoutLeading = normalizedPath.replace(/^\/+/, "");
-		if (withExtension) {
-			return `/${withoutLeading}`;
-		}
-		return `/${withoutLeading.replace(/\.[^/.]+$/, "")}`;
-	}
-
-	const normalizedRoot = normalizePath(contentRoot).replace(/\/$/, "");
-	const withoutRoot = normalizedPath.startsWith(normalizedRoot)
-		? normalizedPath.slice(normalizedRoot.length)
-		: normalizedPath;
-
-	const trimmed = withoutRoot.replace(/^\//, "");
-	if (withExtension) {
-		return `/${trimmed}`;
-	}
-	return `/${trimmed.replace(/\.[^/.]+$/, "")}`;
-};
-
-const shouldKeepExtension = (target?: EmbedTarget) => {
-	if (!target) {
-		return false;
-	}
-
-	const kind = getEmbedKind(target);
-	return kind === "image" || kind === "video";
-};
-
-export const resolveEmbedUrls = ({
+export const resolveEmbedUrl = ({
 	target,
 	contentRoot,
+	contentRootUrlPrefix,
 	resolvedPath,
 	pathTransform,
 }: {
 	target: EmbedTarget;
-	contentRoot?: string;
+	contentRoot: string;
+	contentRootUrlPrefix?: string;
 	resolvedPath?: string;
-	pathTransform?: (context: EmbedPathTransformContext) =>
-		| string
-		| {
-				resolvedUrl?: string;
-				resolvedUrlWithExtension?: string;
-		  }
-		| null
-		| undefined;
+	pathTransform?: (
+		context: EmbedPathTransformContext,
+	) => string | null | undefined;
 }) => {
 	const resolvedUrl = resolvedPath
-		? toContentUrl({
+		? resolveContentUrl({
 				resolvedPath,
 				contentRoot,
-			})
-		: undefined;
-	const resolvedUrlWithExtension = resolvedPath
-		? toContentUrl({
-				resolvedPath,
-				contentRoot,
+				contentRootUrlPrefix,
 				withExtension: true,
 			})
 		: undefined;
-	let transformedResolvedUrl = resolvedUrl;
-	let transformedResolvedUrlWithExtension = resolvedUrlWithExtension;
 
 	const kind = getEmbedKind(target);
 	const transformed = pathTransform?.({
 		kind,
 		target,
 		contentRoot,
-		resolvedPath,
 		resolvedUrl,
-		resolvedUrlWithExtension,
 	});
 	if (typeof transformed === "string") {
-		transformedResolvedUrl = transformed;
-		transformedResolvedUrlWithExtension = transformed;
-	} else if (transformed) {
-		if (typeof transformed.resolvedUrl === "string") {
-			transformedResolvedUrl = transformed.resolvedUrl;
-		}
-		if (typeof transformed.resolvedUrlWithExtension === "string") {
-			transformedResolvedUrlWithExtension =
-				transformed.resolvedUrlWithExtension;
-		}
+		return transformed;
 	}
 
-	const preferExtension = shouldKeepExtension(target);
-	const resolvedUrlPreferred = preferExtension
-		? (transformedResolvedUrlWithExtension ?? transformedResolvedUrl)
-		: transformedResolvedUrl;
-
-	return {
-		resolvedUrl: resolvedUrlPreferred,
-		resolvedUrlWithExtension: transformedResolvedUrlWithExtension,
-	};
+	return resolvedUrl;
 };
 
 const buildImageNode = ({
 	target,
-	resolvedPath,
 	resolvedUrl,
 	imageWidth,
 	imageHeight,
 }: {
 	target: EmbedTarget;
-	resolvedPath?: string;
 	resolvedUrl?: string;
 	imageWidth?: number;
 	imageHeight?: number;
@@ -287,14 +210,12 @@ export const renderEmbedNode = ({
 	contentRoot,
 	resolvedPath,
 	resolvedUrl,
-	resolvedUrlWithExtension,
 }: {
 	target: EmbedTarget;
 	embedRendering?: EmbedRenderingOptions;
 	contentRoot?: string;
 	resolvedPath?: string;
 	resolvedUrl?: string;
-	resolvedUrlWithExtension?: string;
 }) => {
 	const kind = getEmbedKind(target);
 	if (kind === "unsupported") {
@@ -311,9 +232,7 @@ export const renderEmbedNode = ({
 		return embedRendering.notFound({
 			target,
 			contentRoot,
-			resolvedPath,
 			resolvedUrl,
-			resolvedUrlWithExtension,
 			imageWidth,
 			imageHeight,
 			kind,
@@ -330,12 +249,12 @@ export const renderEmbedNode = ({
 			? (context: EmbedRenderContext) =>
 					buildImageNode({
 						target: context.target,
-						resolvedPath: context.resolvedPath,
 						resolvedUrl: context.resolvedUrl,
 						imageWidth: context.imageWidth,
 						imageHeight: context.imageHeight,
 					})
-			: kind === "video"
+			: // biome-ignore lint/style/noNestedTernary: why not
+				kind === "video"
 				? (context: EmbedRenderContext) =>
 						buildVideoNode({
 							target: context.target,
@@ -350,9 +269,7 @@ export const renderEmbedNode = ({
 	return render({
 		target,
 		contentRoot,
-		resolvedPath,
 		resolvedUrl,
-		resolvedUrlWithExtension,
 		imageWidth,
 		imageHeight,
 		kind,
