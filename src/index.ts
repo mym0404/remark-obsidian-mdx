@@ -10,7 +10,6 @@ import {
 import {
 	type EmbedPathTransformContext,
 	type EmbedRenderingOptions,
-	type EmbedRenderResult,
 	type EmbedTarget,
 	renderEmbedNode,
 	resolveEmbedUrl,

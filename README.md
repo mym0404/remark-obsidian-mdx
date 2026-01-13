@@ -72,6 +72,219 @@ const { value } = unified()
 
 `passThrough` keeps MDX nodes intact when converting to HAST; without it, MDX JSX nodes are dropped.
 
+## Fumadocs ready-to-use setup
+
+The examples below are taken from a working Fumadocs project and are ready to copy.
+
+### 1) `source.config.ts`
+
+```ts
+import {
+  defineCollections,
+  defineConfig,
+  defineDocs,
+  frontmatterSchema,
+  metaSchema,
+} from "fumadocs-mdx/config";
+import rehypeKatex from "rehype-katex";
+import remarkMath from "remark-math";
+import remarkObsidianMdx, { type PluginOptions } from "remark-obsidian-mdx";
+import { z } from "zod";
+
+export const docs = defineDocs({
+  dir: "content/docs",
+  docs: {
+    schema: frontmatterSchema.extend({
+      teaser: z.string().optional(),
+    }),
+    postprocess: {
+      includeProcessedMarkdown: true,
+    },
+  },
+  meta: {
+    schema: metaSchema,
+  },
+});
+
+export const blog = defineCollections({
+  type: "doc",
+  dir: "content/blog",
+  schema: frontmatterSchema.extend({
+    date: z.coerce.date().optional(),
+    author: z.string().default("MJ"),
+    tags: z.array(z.string()).optional(),
+  }),
+});
+
+export default defineConfig({
+  mdxOptions: {
+    remarkPlugins: [
+      [
+        remarkObsidianMdx,
+        {
+          contentRoot: "./content",
+          contentRootUrlPrefix: "",
+          wikiLinkPathTransform: ({ resolvedUrl }) =>
+            resolvedUrl?.replace("/content", ""),
+          embedingPathTransform: ({ resolvedUrl }) =>
+            resolvedUrl?.replace("/content", ""),
+          callout: {
+            componentName: "Callout",
+            typePropName: "type",
+            defaultType: "info",
+            typeMap: {
+              note: "info",
+              abstract: "info",
+              summary: "info",
+              tldr: "info",
+              info: "info",
+              todo: "info",
+              quote: "info",
+              tip: "idea",
+              hint: "idea",
+              example: "idea",
+              question: "idea",
+              warn: "warn",
+              warning: "warn",
+              caution: "warn",
+              attention: "warn",
+              danger: "error",
+              error: "error",
+              fail: "error",
+              failure: "error",
+              bug: "error",
+              success: "success",
+              done: "success",
+              check: "success",
+            },
+          },
+          embedRendering: {},
+        } satisfies PluginOptions,
+      ],
+      remarkMath,
+    ],
+    rehypePlugins: (v) => [rehypeKatex, ...v],
+  },
+});
+```
+
+### 2) Assets route (`content/assets/*` -> `/assets/*`)
+
+```ts
+import fs from "node:fs/promises";
+import path from "node:path";
+import { NextRequest } from "next/server";
+
+export const runtime = "nodejs";
+
+const ASSET_ROUTE_PREFIX = "/assets/";
+const ASSET_ROOT = path.resolve(process.cwd(), "content", "assets");
+
+const toAssetPath = ({ pathname }: { pathname: string }) => {
+  if (!pathname.startsWith(ASSET_ROUTE_PREFIX)) {
+    return null;
+  }
+
+  const encodedPath = pathname.slice(ASSET_ROUTE_PREFIX.length);
+  if (!encodedPath) {
+    return null;
+  }
+
+  let decodedPath = "";
+  try {
+    decodedPath = decodeURIComponent(encodedPath);
+  } catch {
+    return null;
+  }
+
+  const resolvedPath = path.resolve(ASSET_ROOT, decodedPath);
+  const withinRoot =
+    resolvedPath === ASSET_ROOT || resolvedPath.startsWith(`${ASSET_ROOT}${path.sep}`);
+
+  if (!withinRoot) {
+    return null;
+  }
+
+  return resolvedPath;
+};
+
+const getContentType = ({ extension }: { extension: string }) => {
+  switch (extension) {
+    case "apng":
+      return "image/apng";
+    case "avif":
+      return "image/avif";
+    case "gif":
+      return "image/gif";
+    case "jpeg":
+      return "image/jpeg";
+    case "jpg":
+      return "image/jpeg";
+    case "png":
+      return "image/png";
+    case "svg":
+      return "image/svg+xml";
+    case "webp":
+      return "image/webp";
+    case "m4v":
+      return "video/x-m4v";
+    case "mov":
+      return "video/quicktime";
+    case "mp4":
+      return "video/mp4";
+    case "ogv":
+      return "video/ogg";
+    case "webm":
+      return "video/webm";
+    case "pdf":
+      return "application/pdf";
+    default:
+      return "application/octet-stream";
+  }
+};
+
+type ErrorWithCode = Error & { code?: string };
+
+const isErrorWithCode = (value: unknown): value is ErrorWithCode =>
+  value instanceof Error && "code" in value;
+
+const createNotFoundResponse = () =>
+  new Response("Not found", { status: 404 });
+
+export const GET = async (request: NextRequest) => {
+  const assetPath = toAssetPath({ pathname: request.nextUrl.pathname });
+  if (!assetPath) {
+    return createNotFoundResponse();
+  }
+
+  try {
+    const file = await fs.readFile(assetPath);
+    const extension = path.extname(assetPath).slice(1).toLowerCase();
+    const contentType = getContentType({ extension });
+
+    return new Response(file, {
+      status: 200,
+      headers: {
+        "Content-Type": contentType,
+        "Cache-Control": "public, max-age=3600",
+      },
+    });
+  } catch (error) {
+    if (isErrorWithCode(error) && error.code === "ENOENT") {
+      return createNotFoundResponse();
+    }
+
+    return new Response("Failed to read asset", { status: 500 });
+  }
+};
+```
+
+### 3) Content layout
+
+- `content/docs` for docs
+- `content/blog` for blog posts
+- `content/assets` for images/video/etc served under `/assets`
+
 ## Options
 
 ### Example
