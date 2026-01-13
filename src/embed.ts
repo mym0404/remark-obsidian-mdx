@@ -138,9 +138,7 @@ export const resolveEmbedUrls = ({
 	target: EmbedTarget;
 	contentRoot?: string;
 	resolvedPath?: string;
-	pathTransform?: (
-		context: EmbedPathTransformContext,
-	) =>
+	pathTransform?: (context: EmbedPathTransformContext) =>
 		| string
 		| {
 				resolvedUrl?: string;
@@ -189,7 +187,7 @@ export const resolveEmbedUrls = ({
 
 	const preferExtension = shouldKeepExtension(target);
 	const resolvedUrlPreferred = preferExtension
-		? transformedResolvedUrlWithExtension ?? transformedResolvedUrl
+		? (transformedResolvedUrlWithExtension ?? transformedResolvedUrl)
 		: transformedResolvedUrl;
 
 	return {

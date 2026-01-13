@@ -7,10 +7,10 @@ import {
 	resolveLink,
 } from "./content-resolver";
 import {
+	type EmbedPathTransformContext,
 	type EmbedRenderingOptions,
 	type EmbedRenderResult,
 	type EmbedTarget,
-	type EmbedPathTransformContext,
 	renderEmbedNode,
 	resolveEmbedUrls,
 } from "./embed";
@@ -29,9 +29,7 @@ export type PluginOptions = {
 	embedRendering?: EmbedRenderingOptions;
 	contentRoot?: string;
 	resolvedUrlWithExtension?: boolean;
-	embedingPathTransform?: (
-		context: EmbedPathTransformContext,
-	) =>
+	embedingPathTransform?: (context: EmbedPathTransformContext) =>
 		| string
 		| {
 				resolvedUrl?: string;
@@ -41,6 +39,11 @@ export type PluginOptions = {
 		| undefined;
 };
 
+export type {
+	ContentResolverIndex,
+	ParsedLink,
+	PathEntry,
+} from "./content-resolver";
 export {
 	addFileToResolver,
 	buildContentResolver,
@@ -50,15 +53,13 @@ export {
 	removeFileFromResolver,
 	resolveLink,
 } from "./content-resolver";
-export type { ContentResolverIndex, ParsedLink, PathEntry } from "./content-resolver";
 export type {
+	EmbedPathTransformContext,
 	EmbedRenderContext,
 	EmbedRenderingOptions,
 	EmbedRenderResult,
 	EmbedTarget,
 } from "./embed";
-
-export type { EmbedPathTransformContext } from "./embed";
 
 const normalizePath = (value: string) =>
 	value.replace(/\\/g, "/").replace(/\/+/g, "/").trim();

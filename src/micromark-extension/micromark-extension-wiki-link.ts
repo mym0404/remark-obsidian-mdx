@@ -24,7 +24,7 @@ export const wikiLinkSyntax = (opts: { aliasDivider?: string } = {}) => {
 	const tokenize = (effects: any, ok: any, nok: any) => {
 		let data = false;
 		let alias = false;
-		let embed = false;
+		let _embed = false;
 
 		let aliasCursor = 0;
 		let startMarkerCursor = 0;
@@ -35,7 +35,7 @@ export const wikiLinkSyntax = (opts: { aliasDivider?: string } = {}) => {
 
 		function start(code: number | null) {
 			if (code === codes.exclamation) {
-				embed = true;
+				_embed = true;
 				wikiLinkToken = effects.enter("wikiLink");
 				wikiLinkToken._embed = true;
 				effects.enter("wikiLinkEmbedMarker");

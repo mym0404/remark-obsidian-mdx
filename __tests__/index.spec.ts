@@ -2,7 +2,10 @@ import path from "node:path";
 import { toString as mdastToString } from "mdast-util-to-string";
 import { remark } from "remark";
 import { expect, test } from "vitest";
-import type { EmbedPathTransformContext, EmbedRenderContext } from "../src/embed";
+import type {
+	EmbedPathTransformContext,
+	EmbedRenderContext,
+} from "../src/embed";
 import plugin from "../src/index";
 import type {
 	ChildrenNodeWithChildren,
@@ -130,9 +133,7 @@ const findMarkNodes = ({ tree }: { tree: unknown }) =>
 
 const isEmbedNode = (value: unknown): value is MdxJsxFlowElement =>
 	isMdxJsxFlowElement(value) &&
-	["EmbedNote", "EmbedImage", "EmbedVideo", "video"].includes(
-		value.name,
-	);
+	["EmbedNote", "EmbedImage", "EmbedVideo", "video"].includes(value.name);
 
 const findEmbedNodes = ({ tree }: { tree: unknown }) =>
 	collectNodes<MdxJsxFlowElement>({ node: tree, isMatch: isEmbedNode });
