@@ -1,6 +1,6 @@
 {
 	"name": "remark-obsidian-mdx",
-	"version": "0.0.2",
+	"version": "1.0.0",
 	"type": "module",
 	"main": "dist/cjs/index.cjs",
 	"module": "dist/esm/index.mjs",
