@@ -21,6 +21,7 @@ A blog built with this plugin is available at https://english.mjstudio.net, and 
 - `[[Wiki link]]` to mdast `link` nodes (alias divider is `|`)
 - `[[#Heading]]` uses a heading slug
 - `![[Embed]]` to user-provided MDX JSX nodes (note/image/video renderers)
+- Find matched notes, embeddings from the contentRoot recursively(mocking Obsidian's algorithm)
 
 ## Installation
 
