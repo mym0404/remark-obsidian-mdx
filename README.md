@@ -2,9 +2,6 @@
 
 > This plugin is inspired by [remark-obsidian](https://github.com/johackim/remark-obsidian)
 
-> [!IMPORTANT]
-> This project is under developing.
-
 [![Version](https://img.shields.io/github/tag/mym0404/remark-obsidian-mdx.svg?label=Version&style=flat&colorA=2B323B&colorB=1e2329)](https://github.com/mym0404/remark-obsidian-mdx/releases)
 [![License](https://img.shields.io/badge/license-GPL%20v3%2B-yellow.svg?label=License&style=flat&colorA=2B323B&colorB=1e2329)](https://raw.githubusercontent.com/mym0404/remark-obsidian-mdx/master/LICENSE.txt)
 
