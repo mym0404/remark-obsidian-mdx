@@ -345,27 +345,8 @@ remark().use(remarkObsidianMdx, {
 - Returning a string overrides `resolvedUrl`.
 - For wiki links, `resolvedUrl` excludes extensions by default.
 
-### Next.js Image mapping
+### Asset url mapping
 If your vault stores images under `vault/assets/images`, you should serve them via a route like `app/assets/[[slug]].tsx` so the resolved URLs can be fetched by the app.
-
-```tsx
-import Image from "next/image";
-import defaultMdxComponents from "fumadocs-ui/mdx";
-
-export function getMDXComponents(components?: Record<string, any>) {
-  return {
-    ...defaultMdxComponents,
-    img: (props: any) => {
-      const width =
-        typeof props.width === "string" ? Number(props.width) : props.width;
-      const height =
-        typeof props.height === "string" ? Number(props.height) : props.height;
-      return <Image {...props} width={width} height={height} />;
-    },
-    ...components,
-  };
-}
-```
 
 ## License
 
