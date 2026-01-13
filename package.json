@@ -6,9 +6,7 @@
 	"module": "dist/esm/index.mjs",
 	"types": "dist/esm/index.d.ts",
 	"files": [
-		"dist/cjs/index.cjs",
-		"dist/esm/index.mjs",
-		"dist/esm/index.d.ts"
+		"dist"
 	],
 	"exports": {
 		".": {
@@ -52,15 +50,11 @@
 		"mdast-util-gfm-strikethrough": "^1.0.3",
 		"mdast-util-to-markdown": "^1.5.0",
 		"mdast-util-to-string": "^3.2.0",
-		"mdast-util-wiki-link": "^0.1.2",
-		"micromark-extension-mark": "^1.0.2",
-		"micromark-extension-wiki-link": "^0.0.4",
+		"image-size": "^1.1.1",
+		"micromark-extension-highlight-mark": "^1.2.0",
 		"release-it": "^19.2.3",
 		"remark": "^14.0.3",
 		"remark-comment": "^1.0.0",
-		"remark-frontmatter": "^4.0.1",
-		"remark-gfm": "^3.0.1",
-		"remark-html": "^15.0.2",
 		"remark-parse": "^10.0.2",
 		"slugify": "^1.6.6",
 		"tsdown": "^0.19.0",

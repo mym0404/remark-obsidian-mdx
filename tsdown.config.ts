@@ -6,6 +6,7 @@ export default defineConfig([
 		format: "esm",
 		outDir: "dist/esm",
 		dts: true,
+		unbundle: true,
 		outExtensions: () => ({
 			js: ".mjs",
 			dts: ".d.ts",
@@ -14,6 +15,8 @@ export default defineConfig([
 	{
 		entry: ["src/index.ts"],
 		format: "cjs",
+		unbundle: true,
+
 		outDir: "dist/cjs",
 		outExtensions: () => ({
 			js: ".cjs",

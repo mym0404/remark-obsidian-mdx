@@ -3,12 +3,6 @@ import type { visit } from "unist-util-visit";
 
 export type MarkdownNode = Nodes;
 
-export type MarkdownFile = {
-	file: string;
-	permalink?: string;
-	content?: string;
-};
-
 export type ChildrenNode = {
 	children?: unknown[];
 };
@@ -32,11 +26,6 @@ export type LinkNode = MarkdownNode & {
 			className?: string[];
 		};
 	};
-};
-
-export type HtmlNode = MarkdownNode & {
-	type: "html";
-	value: string;
 };
 
 export type RootNode = {

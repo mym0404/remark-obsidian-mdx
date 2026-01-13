@@ -14,7 +14,7 @@ const exitMark: FromMarkdownHandle = function (token) {
 };
 
 export const markFromMarkdown = {
-	canContainEols: ["mark"],
-	enter: { mark: enterMark },
-	exit: { mark: exitMark },
+	canContainEols: ["highlight"],
+	enter: { highlight: enterMark },
+	exit: { highlight: exitMark },
 };

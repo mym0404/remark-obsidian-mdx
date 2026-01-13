@@ -21,8 +21,7 @@ Remark plugin to support Obsidian markdown syntax with MDX output.
 - `==highlight==` to `<mark>...</mark>` (MDX JSX text element)
 - `[[Wiki link]]` to mdast `link` nodes (alias divider is `|`)
 - `[[#Heading]]` uses a heading slug
-- `![[Embed note]]` to raw HTML embed (requires `markdownFiles`)
-- Not supported: `![[Embed note#heading]]`
+- `![[Embed]]` to user-provided MDX JSX nodes (note/image/video renderers)
 
 ## Installation
 
@@ -79,11 +78,6 @@ const { value } = unified()
 import remarkObsidianMdx from "remark-obsidian-mdx";
 
 remark().use(remarkObsidianMdx, {
-  baseUrl: "/docs",
-  markdownFiles: [
-    { file: "myfile.md", permalink: "custom-link" },
-    { file: "My Note.md", content: "This is **embedded**." },
-  ],
   callout: {
     componentName: "Callout",
     typePropName: "type",
@@ -114,16 +108,81 @@ remark().use(remarkObsidianMdx, {
       check: "success",
     },
   },
+  contentRoot: "/vault",
+  embedRendering: {
+    note: ({ target }) => ({
+      type: "mdxJsxFlowElement",
+      name: "EmbedNote",
+      attributes: [
+        { type: "mdxJsxAttribute", name: "page", value: target.page },
+      ],
+      children: [],
+    }),
+    image: ({ target, resolvedUrl, imageWidth, imageHeight }) => ({
+      type: "image",
+      url: resolvedUrl ?? target.page,
+      alt: target.page,
+      data: {
+        hProperties: {
+          width: imageWidth ?? 640,
+          height: imageHeight ?? 480,
+        },
+      },
+    }),
+    video: ({ target, resolvedUrl }) => ({
+      type: "mdxJsxFlowElement",
+      name: "video",
+      attributes: [
+        { type: "mdxJsxAttribute", name: "src", value: resolvedUrl ?? target.page },
+      ],
+      children: [],
+    }),
+  },
+  embedingPathTransform: ({ kind, resolvedUrlWithExtension }) => {
+    if (kind === "image" || kind === "video") {
+      return resolvedUrlWithExtension ?? null;
+    }
+    return null;
+  },
 });
 ```
 
 Notes:
-- `baseUrl` is prefixed to resolved wiki links.
 - Wiki links and `==mark==` are parsed via micromark extensions injected by the plugin.
-- `markdownFiles` resolves wiki links and embeds by filename. Missing entries add a `not-found` class.
 - `typeMap` fully replaces the default mapping when provided.
 - `typeMap` keys are normalized to lowercase.
 - Empty mapped values fall back to `defaultType`.
+- `embedRendering` controls how `![[...]]` is rendered. Heading (`#`) and block (`^`) embeds are ignored for now.
+- Unsupported embed types (non-note/image/video files) are ignored.
+- `contentRoot` is used to build an on-disk index for resolving `[[...]]` and `![[...]]`, and is also passed to embed rendering.
+- `embedRendering` receives `resolvedPath`, `resolvedUrl`, `resolvedUrlWithExtension`, and `imageWidth`/`imageHeight` when an image target is found (for images/videos, `resolvedUrl` includes the extension by default).
+- If a target cannot be resolved under `contentRoot`, the default output is a plain text fallback. You can override this with `embedRendering.notFound`.
+- `resolvedUrlWithExtension` keeps the file extension in resolved URLs when set to true (default for image/video embeds).
+- `embedingPathTransform` lets you override resolved URLs based on embed kind and resolved path (return a string to override both URLs).
+- For embeds, `resolvedUrl` is preferred and already includes extensions for image/video.
+- For Next.js, map `img` to `Image` and coerce width/height to numbers (see example below).
+- If `embedRendering.image` is omitted, the plugin emits a standard `image` node with `data.hProperties.width/height` inferred from the file. If `embedRendering.video` is omitted, it emits a `video` MDX JSX node.
+
+### Next.js Image mapping
+
+```tsx
+import Image from "next/image";
+import defaultMdxComponents from "fumadocs-ui/mdx";
+
+export function getMDXComponents(components?: Record<string, any>) {
+  return {
+    ...defaultMdxComponents,
+    img: (props: any) => {
+      const width =
+        typeof props.width === "string" ? Number(props.width) : props.width;
+      const height =
+        typeof props.height === "string" ? Number(props.height) : props.height;
+      return <Image {...props} width={width} height={height} />;
+    },
+    ...components,
+  };
+}
+```
 
 ## License
 

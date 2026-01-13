@@ -1,12 +1,12 @@
 import slugify from "slugify";
 import { isRecord } from "./util";
-import type { MarkdownFile } from "./types";
 
 type WikiLinkNode = {
 	type: "wikiLink";
 	value?: string;
 	data?: {
 		alias?: string;
+		embed?: boolean;
 	};
 };
 
@@ -24,6 +24,16 @@ const getWikiLinkAlias = ({ node }: { node: WikiLinkNode }) => {
 	return alias;
 };
 
+export const getWikiLinkEmbed = ({ node }: { node: unknown }) => {
+	if (!isWikiLinkNode(node)) {
+		return false;
+	}
+
+	return Boolean(node.data?.embed);
+};
+
+export type WikiAnchorType = "" | "#" | "^";
+
 export const parseWikiTarget = ({ value }: { value: string }) => {
 	const headingIndex = value.indexOf("#");
 	const blockIndex = value.indexOf("^");
@@ -32,12 +42,12 @@ export const parseWikiTarget = ({ value }: { value: string }) => {
 	const hasBlock = blockIndex !== -1;
 
 	if (!hasHeading && !hasBlock) {
-		return { page: value, anchor: "", anchorType: "" };
+		return { page: value, anchor: "", anchorType: "" as WikiAnchorType };
 	}
 
 	const useHeading = hasHeading && (!hasBlock || headingIndex < blockIndex);
 	const index = useHeading ? headingIndex : blockIndex;
-	const anchorType = useHeading ? "#" : "^";
+	const anchorType = (useHeading ? "#" : "^") as WikiAnchorType;
 
 	const page = value.slice(0, index).trim();
 	const anchor = value.slice(index + 1).trim();
@@ -59,22 +69,8 @@ export const getWikiLinkTarget = ({ node }: { node: unknown }) => {
 	return { value, ...parseWikiTarget({ value }) };
 };
 
-const resolvePageUrl = ({
-	page,
-	markdownFiles,
-}: {
-	page: string;
-	markdownFiles?: MarkdownFile[];
-}) => {
-	const file = markdownFiles?.find((entry) => entry.file === `${page}.md`);
-
-	if (file?.permalink) {
-		return { url: `/${file.permalink}`, isNotFound: false };
-	}
-
-	const isNotFound = Boolean(markdownFiles && !file);
-	return { url: `/${slugify(page, { lower: true })}`, isNotFound };
-};
+const resolvePageUrl = ({ page }: { page: string }) =>
+	`/${slugify(page, { lower: true })}`;
 
 const resolveAnchor = ({
 	anchor,
@@ -124,12 +120,10 @@ const resolveLinkText = ({
 
 export const createLinkFromWikiLink = ({
 	node,
-	baseUrl,
-	markdownFiles,
+	resolvedUrl,
 }: {
 	node: unknown;
-	baseUrl: string;
-	markdownFiles?: MarkdownFile[];
+	resolvedUrl?: string;
 }) => {
 	if (!isWikiLinkNode(node)) {
 		return null;
@@ -168,25 +162,13 @@ export const createLinkFromWikiLink = ({
 		};
 	}
 
-	const { url: pageUrl, isNotFound } = resolvePageUrl({
-		page,
-		markdownFiles,
-	});
-	const url = `${baseUrl}${pageUrl}${anchorHash}`;
-
-	const data = isNotFound
-		? {
-				hProperties: {
-					className: ["not-found"],
-				},
-			}
-		: undefined;
+	const pageUrl = resolvedUrl ?? resolvePageUrl({ page });
+	const url = `${pageUrl}${anchorHash}`;
 
 	return {
 		type: "link",
 		url,
 		title: linkText || undefined,
-		data,
 		children: linkText ? [{ type: "text", value: linkText }] : [],
 	};
 };

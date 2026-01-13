@@ -1,5 +1,4 @@
 import type {
-	ChildrenNode,
 	ChildrenNodeWithChildren,
 	MarkdownNode,
 	ParagraphNode,
@@ -23,7 +22,3 @@ export const isTextNode = (
 	value: unknown,
 ): value is { type: "text"; value: string } =>
 	isRecord(value) && value.type === "text" && typeof value.value === "string";
-
-export const removeChildren = ({ node }: { node: ChildrenNode }) => {
-	delete node.children;
-};

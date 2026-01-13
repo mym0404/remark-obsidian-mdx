@@ -1,11 +1,11 @@
+import path from "node:path";
 import { toString as mdastToString } from "mdast-util-to-string";
-
 import { remark } from "remark";
 import { expect, test } from "vitest";
+import type { EmbedPathTransformContext, EmbedRenderContext } from "../src/embed";
 import plugin from "../src/index";
 import type {
 	ChildrenNodeWithChildren,
-	HtmlNode,
 	LinkNode,
 	MarkdownNode,
 	MdxJsxAttribute,
@@ -47,8 +47,8 @@ const isLinkNode = (value: unknown): value is LinkNode =>
 	typeof value.url === "string" &&
 	Array.isArray(value.children);
 
-const isHtmlNode = (value: unknown): value is HtmlNode =>
-	isRecord(value) && value.type === "html" && typeof value.value === "string";
+const isImageNode = (value: unknown): value is { type: "image"; url: string } =>
+	isRecord(value) && value.type === "image" && typeof value.url === "string";
 
 const isMdxJsxTextElement = (value: unknown): value is MdxJsxTextElement =>
 	isRecord(value) &&
@@ -115,6 +115,12 @@ const getCalloutText = ({ callout }: { callout: MdxJsxFlowElement }) =>
 const findLinkNodes = ({ tree }: { tree: unknown }) =>
 	collectNodes<LinkNode>({ node: tree, isMatch: isLinkNode });
 
+const findImageNodes = ({ tree }: { tree: unknown }) =>
+	collectNodes<{ type: "image"; url: string }>({
+		node: tree,
+		isMatch: isImageNode,
+	});
+
 const findMarkNodes = ({ tree }: { tree: unknown }) =>
 	collectNodes<MdxJsxTextElement>({
 		node: tree,
@@ -122,8 +128,31 @@ const findMarkNodes = ({ tree }: { tree: unknown }) =>
 			isMdxJsxTextElement(value) && value.name === "mark",
 	});
 
-const findHtmlNodes = ({ tree }: { tree: unknown }) =>
-	collectNodes<HtmlNode>({ node: tree, isMatch: isHtmlNode });
+const isEmbedNode = (value: unknown): value is MdxJsxFlowElement =>
+	isMdxJsxFlowElement(value) &&
+	["EmbedNote", "EmbedImage", "EmbedVideo", "video"].includes(
+		value.name,
+	);
+
+const findEmbedNodes = ({ tree }: { tree: unknown }) =>
+	collectNodes<MdxJsxFlowElement>({ node: tree, isMatch: isEmbedNode });
+
+const createEmbedNode = ({
+	name,
+	attributes,
+}: {
+	name: string;
+	attributes: MdxJsxAttribute[];
+}) => {
+	const node: MdxJsxFlowElement = {
+		type: "mdxJsxFlowElement",
+		name,
+		attributes,
+		children: [],
+	};
+
+	return node;
+};
 
 const getNodeText = ({ node }: { node: ChildrenNodeWithChildren }) =>
 	node.children
@@ -333,18 +362,6 @@ test("Should support > [!CALLOUT] with multiple lines", async () => {
 	expect(bodyText).toContain("with multiple lines");
 });
 
-test("Should support baseUrl option", async () => {
-	const text = "[[Internal link]]";
-	const options = { baseUrl: "/foo" };
-
-	const tree = await getTree({ text, options });
-	const links = findLinkNodes({ tree });
-	const [link] = links;
-
-	expect(links).toHaveLength(1);
-	expect(link.url).toBe("/foo/internal-link");
-});
-
 test("Should support [[#Heading]]", async () => {
 	const text = "[[#Heading]]";
 
@@ -357,68 +374,194 @@ test("Should support [[#Heading]]", async () => {
 	expect(mdastToString(link)).toBe("Heading");
 });
 
-test("Should resolve wikilinks using frontmatter permalink when markdownFiles list is provided", async () => {
-	const text = "Go to [[myfile]]";
-	const options = {
-		markdownFiles: [{ file: "myfile.md", permalink: "custom-link" }],
-	};
-
-	const tree = await getTree({ text, options });
-	const links = findLinkNodes({ tree });
-	const [link] = links;
-
-	expect(links).toHaveLength(1);
-	expect(link.url).toBe("/custom-link");
-	expect(mdastToString(link)).toBe("myfile");
-});
-
-test("Should add not-found class to links that are not available on markdownFiles", async () => {
-	const text = "[[Internal link]]";
-	const options = { markdownFiles: [] };
-
-	const tree = await getTree({ text, options });
-	const links = findLinkNodes({ tree });
-	const [link] = links;
-	const classNames = link.data?.hProperties?.className ?? [];
-
-	expect(links).toHaveLength(1);
-	expect(link.url).toBe("/internal-link");
-	expect(classNames).toContain("not-found");
-});
-
 test("Should ignore embed links inside code blocks", async () => {
 	const text = "`![[Embed Link]]`";
-
-	const tree = await getTree({ text });
-	const htmlNodes = findHtmlNodes({ tree });
-
-	expect(htmlNodes).toHaveLength(0);
-});
-
-test("Should support ![[Embed note]]", async () => {
-	const text = "![[My Note]]";
 	const options = {
-		markdownFiles: [
-			{ file: "My Note.md", content: "This is a note with **bold** text." },
-		],
+		embedRendering: {
+			note: ({ target }: EmbedRenderContext) =>
+				createEmbedNode({
+					name: "EmbedNote",
+					attributes: [
+						{
+							type: "mdxJsxAttribute",
+							name: "page",
+							value: target.page,
+						},
+					],
+				}),
+		},
 	};
 
-	const output = String(await remark().use(plugin, options).process(text));
+	const tree = await getTree({ text, options });
+	const embedNodes = findEmbedNodes({ tree });
 
-	expect(output).toContain(
-		'<div class="embed-note"><p>This is a note with <strong>bold</strong> text.</p>\n</div>',
-	);
+	expect(embedNodes).toHaveLength(0);
 });
 
-test("Should add not-found class to embed links that are not available on markdownFiles", async () => {
-	const text = "![[Another Note]]";
-	const options = { markdownFiles: [] };
+test("Should ignore note embeds with headings and block ids", async () => {
+	const text = ["![[ProjectA#TODO]]", "![[ProjectA^block-id]]"].join("\n");
+	const options = {
+		embedRendering: {
+			note: ({ target }: EmbedRenderContext) =>
+				createEmbedNode({
+					name: "EmbedNote",
+					attributes: [
+						{
+							type: "mdxJsxAttribute",
+							name: "page",
+							value: target.page,
+						},
+					],
+				}),
+		},
+	};
 
-	const output = String(await remark().use(plugin, options).process(text));
+	const tree = await getTree({ text, options });
+	const embedNodes = findEmbedNodes({ tree });
 
-	expect(output).toContain(
-		'<div class="embed-note not-found">Note not found</div>',
-	);
+	expect(embedNodes).toHaveLength(0);
+});
+
+test("Should support image embeds", async () => {
+	const text = "![[image.png]]";
+	const contentRoot = path.resolve(__dirname, "fixtures", "vault");
+	const options = {
+		contentRoot,
+		embedRendering: {},
+	};
+
+	const tree = await getTree({ text, options });
+	const [image] = findImageNodes({ tree });
+
+	expect(image.url).toBe("/image.png");
+});
+
+test("Should support video embeds", async () => {
+	const text = " hello ![[clip.mp4]]";
+	const contentRoot = path.resolve(__dirname, "fixtures", "vault");
+	const options = {
+		contentRoot,
+		embedRendering: {},
+	};
+
+	const tree = await getTree({ text, options });
+	const [embed] = findEmbedNodes({ tree });
+
+	expect(embed.name).toBe("video");
+	expect(embed.attributes).toContainEqual({
+		type: "mdxJsxAttribute",
+		name: "src",
+		value: "/clip.mp4",
+	});
+});
+
+test("Should ignore unsupported embeds", async () => {
+	const text = "![[diagram.excalidraw]]";
+	const options = {
+		embedRendering: {},
+	};
+
+	const tree = await getTree({ text, options });
+	const embedNodes = findEmbedNodes({ tree });
+
+	expect(embedNodes).toHaveLength(0);
+});
+
+test("Should resolve wiki links using content index", async () => {
+	const text = "[[ProjectA]]";
+	const contentRoot = path.resolve(__dirname, "fixtures", "vault");
+	const options = {
+		contentRoot,
+	};
+
+	const tree = await getTree({ text, options });
+	const links = findLinkNodes({ tree });
+	const [link] = links;
+
+	expect(links).toHaveLength(1);
+	expect(link.url).toBe("/notes/ProjectA");
+});
+
+test("Should pass resolved url to embed rendering", async () => {
+	const text = "![[ProjectA]]";
+	const contentRoot = path.resolve(__dirname, "fixtures", "vault");
+	let receivedUrl: string | undefined;
+	const options = {
+		contentRoot,
+		embedRendering: {
+			note: (context: EmbedRenderContext) => {
+				receivedUrl = context.resolvedUrl;
+				return createEmbedNode({
+					name: "EmbedNote",
+					attributes: [
+						{
+							type: "mdxJsxAttribute",
+							name: "page",
+							value: context.target.page,
+						},
+					],
+				});
+			},
+		},
+	};
+
+	const tree = await getTree({ text, options });
+	const embedNodes = findEmbedNodes({ tree });
+
+	expect(embedNodes).toHaveLength(1);
+	expect(receivedUrl).toBe("/notes/ProjectA");
+});
+
+test("Should support inline embeds", async () => {
+	const text = "hello ![[ProjectA]] world";
+	const contentRoot = path.resolve(__dirname, "fixtures", "vault");
+	const options = {
+		contentRoot,
+		embedRendering: {
+			note: ({ target }: EmbedRenderContext) =>
+				createEmbedNode({
+					name: "EmbedNote",
+					attributes: [
+						{
+							type: "mdxJsxAttribute",
+							name: "page",
+							value: target.page,
+						},
+					],
+				}),
+		},
+	};
+
+	const tree = await getTree({ text, options });
+	const embedNodes = findEmbedNodes({ tree });
+
+	expect(embedNodes).toHaveLength(1);
+});
+
+test("Should transform resolved embed urls", async () => {
+	const text = "![[photo.png]]";
+	const contentRoot = path.resolve(__dirname, "fixtures", "vault");
+	const options = {
+		contentRoot,
+		embedingPathTransform: ({
+			kind,
+			resolvedUrlWithExtension,
+		}: EmbedPathTransformContext) => {
+			if (kind === "image" && resolvedUrlWithExtension) {
+				return resolvedUrlWithExtension.replace(
+					"/assets/images/",
+					"/static/img/",
+				);
+			}
+			return null;
+		},
+		embedRendering: {},
+	};
+
+	const tree = await getTree({ text, options });
+	const [image] = findImageNodes({ tree });
+
+	expect(image.url).toBe("/static/img/photo.png");
 });
 
 test("Should support [[A & B]]", async () => {
