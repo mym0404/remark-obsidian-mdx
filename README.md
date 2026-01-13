@@ -7,7 +7,7 @@
 
 Remark plugin to support Obsidian markdown syntax with MDX output.
 
-![preview](https://cdn.jsdelivr.net/gh/mym0404/image-archive/20260113195238377.png)
+![preview](https://cdn.jsdelivr.net/gh/mym0404/image-archive/20260113195635356.png)
 
 
 ## Features
