@@ -18,15 +18,39 @@ export type EmbedRenderResult =
 	| MdxJsxFlowElement
 	| MdxJsxTextElement;
 
-export type EmbedRenderContext = {
+type EmbedRenderContextBase = {
 	target: EmbedTarget;
 	contentRoot?: string;
 	resolvedUrl?: string;
+};
+
+export type EmbedRenderNoteContext = EmbedRenderContextBase & {
+	kind: "note";
+	isResolved: true;
+};
+
+export type EmbedRenderImageContext = EmbedRenderContextBase & {
+	kind: "image";
 	imageWidth?: number;
 	imageHeight?: number;
-	kind: "note" | "image" | "video";
-	isResolved: boolean;
+	isResolved: true;
 };
+
+export type EmbedRenderVideoContext = EmbedRenderContextBase & {
+	kind: "video";
+	isResolved: true;
+};
+
+export type EmbedRenderNotFoundContext = EmbedRenderContextBase & {
+	kind: "note" | "image" | "video";
+	isResolved: false;
+};
+
+export type EmbedRenderContext =
+	| EmbedRenderNoteContext
+	| EmbedRenderImageContext
+	| EmbedRenderVideoContext
+	| EmbedRenderNotFoundContext;
 
 export type EmbedPathTransformContext = {
 	kind: ReturnType<typeof getEmbedKind>;
@@ -36,10 +60,10 @@ export type EmbedPathTransformContext = {
 };
 
 export type EmbedRenderingOptions = {
-	note?: (context: EmbedRenderContext) => EmbedRenderResult | null;
-	image?: (context: EmbedRenderContext) => EmbedRenderResult | null;
-	video?: (context: EmbedRenderContext) => EmbedRenderResult | null;
-	notFound?: (context: EmbedRenderContext) => EmbedRenderResult | null;
+	note?: (context: EmbedRenderNoteContext) => EmbedRenderResult | null;
+	image?: (context: EmbedRenderImageContext) => EmbedRenderResult | null;
+	video?: (context: EmbedRenderVideoContext) => EmbedRenderResult | null;
+	notFound?: (context: EmbedRenderNotFoundContext) => EmbedRenderResult | null;
 };
 
 const IMAGE_EXTENSIONS = new Set([
@@ -233,46 +257,68 @@ export const renderEmbedNode = ({
 			target,
 			contentRoot,
 			resolvedUrl,
-			imageWidth,
-			imageHeight,
 			kind,
-			isResolved,
+			isResolved: false,
 		});
 	}
 	if (!isResolved) {
 		return buildNotFoundNode(target);
 	}
 
-	const render =
-		embedRendering?.[kind] ??
-		(kind === "image"
-			? (context: EmbedRenderContext) =>
-					buildImageNode({
-						target: context.target,
-						resolvedUrl: context.resolvedUrl,
-						imageWidth: context.imageWidth,
-						imageHeight: context.imageHeight,
-					})
-			: // biome-ignore lint/style/noNestedTernary: why not
-				kind === "video"
-				? (context: EmbedRenderContext) =>
-						buildVideoNode({
-							target: context.target,
-							resolvedUrl: context.resolvedUrl,
-						})
-				: undefined);
+	if (kind === "image") {
+		const render =
+			embedRendering?.image ??
+			((context: EmbedRenderImageContext) =>
+				buildImageNode({
+					target: context.target,
+					resolvedUrl: context.resolvedUrl,
+					imageWidth: context.imageWidth,
+					imageHeight: context.imageHeight,
+				}));
 
-	if (!render) {
-		return null;
+		return render({
+			target,
+			contentRoot,
+			resolvedUrl,
+			imageWidth,
+			imageHeight,
+			kind,
+			isResolved: true,
+		});
 	}
 
-	return render({
-		target,
-		contentRoot,
-		resolvedUrl,
-		imageWidth,
-		imageHeight,
-		kind,
-		isResolved,
-	});
+	if (kind === "video") {
+		const render =
+			embedRendering?.video ??
+			((context: EmbedRenderVideoContext) =>
+				buildVideoNode({
+					target: context.target,
+					resolvedUrl: context.resolvedUrl,
+				}));
+
+		return render({
+			target,
+			contentRoot,
+			resolvedUrl,
+			kind,
+			isResolved: true,
+		});
+	}
+
+	if (kind === "note") {
+		const render = embedRendering?.note;
+		if (!render) {
+			return null;
+		}
+
+		return render({
+			target,
+			contentRoot,
+			resolvedUrl,
+			kind,
+			isResolved: true,
+		});
+	}
+
+	return null;
 };

@@ -79,42 +79,9 @@ The examples below are taken from a working Fumadocs project and are ready to co
 ### 1) `source.config.ts`
 
 ```ts
-import {
-  defineCollections,
-  defineConfig,
-  defineDocs,
-  frontmatterSchema,
-  metaSchema,
-} from "fumadocs-mdx/config";
-import rehypeKatex from "rehype-katex";
-import remarkMath from "remark-math";
 import remarkObsidianMdx, { type PluginOptions } from "remark-obsidian-mdx";
-import { z } from "zod";
 
-export const docs = defineDocs({
-  dir: "content/docs",
-  docs: {
-    schema: frontmatterSchema.extend({
-      teaser: z.string().optional(),
-    }),
-    postprocess: {
-      includeProcessedMarkdown: true,
-    },
-  },
-  meta: {
-    schema: metaSchema,
-  },
-});
-
-export const blog = defineCollections({
-  type: "doc",
-  dir: "content/blog",
-  schema: frontmatterSchema.extend({
-    date: z.coerce.date().optional(),
-    author: z.string().default("MJ"),
-    tags: z.array(z.string()).optional(),
-  }),
-});
+export const docs = defineDocs({ ... });
 
 export default defineConfig({
   mdxOptions: {
@@ -132,31 +99,6 @@ export default defineConfig({
             componentName: "Callout",
             typePropName: "type",
             defaultType: "info",
-            typeMap: {
-              note: "info",
-              abstract: "info",
-              summary: "info",
-              tldr: "info",
-              info: "info",
-              todo: "info",
-              quote: "info",
-              tip: "idea",
-              hint: "idea",
-              example: "idea",
-              question: "idea",
-              warn: "warn",
-              warning: "warn",
-              caution: "warn",
-              attention: "warn",
-              danger: "error",
-              error: "error",
-              fail: "error",
-              failure: "error",
-              bug: "error",
-              success: "success",
-              done: "success",
-              check: "success",
-            },
           },
           embedRendering: {},
         } satisfies PluginOptions,
