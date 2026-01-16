@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm test:*)",
+      "Bash(pnpm t:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)"
+    ]
+  }
+}
