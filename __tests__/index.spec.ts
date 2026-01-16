@@ -365,9 +365,12 @@ test("Should support > [!CALLOUT] with custom title", async () => {
 });
 
 test("Should support > [!CALLOUT] with multiple lines", async () => {
-	const text = ["> [!NOTE]", "> This is a note", "> with multiple lines"].join(
-		"\n",
-	);
+	const text = [
+		"> [!NOTE]",
+		"> This is a note",
+		">",
+		"> with multiple lines",
+	].join("\n");
 
 	const processor = remark().use(plugin, { contentRoot: defaultContentRoot });
 	const tree = await processor.run(processor.parse(text));
@@ -386,6 +389,59 @@ test("Should support > [!CALLOUT] with multiple lines", async () => {
 	});
 	expect(bodyText).toContain("This is a note");
 	expect(bodyText).toContain("with multiple lines");
+});
+
+test("Should support > [!CALLOUT] with multiple lines and highlightings", async () => {
+	const text = [
+		"> [!NOTE]",
+		"> This is a note",
+		">",
+		"> with multiple lines **bold** *italic*",
+	].join("\n");
+
+	const processor = remark().use(plugin, { contentRoot: defaultContentRoot });
+	const tree = await processor.run(processor.parse(text));
+	const callout = findCalloutNode({ tree });
+
+	if (!callout) {
+		throw new Error("Callout not found");
+	}
+
+	const bodyText = getCalloutText({ callout });
+
+	expect(callout.attributes).toContainEqual({
+		type: "mdxJsxAttribute",
+		name: "type",
+		value: "info",
+	});
+	expect(bodyText).toContain("This is a note");
+	expect(bodyText).toContain("with multiple lines");
+	expect(bodyText).toContain("bold");
+	expect(bodyText).toContain("italic");
+});
+
+test("Should support callout with inline formatting on same line as marker", async () => {
+	const text =
+		"> [!INFO] Info\n> I used to play *Mario Kart NDS* or Rhythm Hero";
+
+	const processor = remark().use(plugin, { contentRoot: defaultContentRoot });
+	const tree = await processor.run(processor.parse(text));
+	const callout = findCalloutNode({ tree });
+
+	if (!callout) {
+		throw new Error("Callout not found");
+	}
+
+	const bodyText = getCalloutText({ callout });
+
+	expect(callout.attributes).toContainEqual({
+		type: "mdxJsxAttribute",
+		name: "type",
+		value: "info",
+	});
+	expect(bodyText).toContain("I used to play");
+	expect(bodyText).toContain("Mario Kart NDS");
+	expect(bodyText).toContain("or Rhythm Hero");
 });
 
 test("Should support [[#Heading]]", async () => {
