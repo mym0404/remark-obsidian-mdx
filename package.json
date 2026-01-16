@@ -16,7 +16,7 @@
 		}
 	},
 	"scripts": {
-		"test": "vitest run",
+		"test": "vitest --run",
 		"release": "release-it",
 		"prepublishOnly": "npm run build",
 		"build": "tsdown",
