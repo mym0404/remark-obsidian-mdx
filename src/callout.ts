@@ -104,25 +104,29 @@ const getCalloutBodyParagraph = ({
 }: {
 	paragraph: ParagraphNode;
 }) => {
-	const [firstChild] = paragraph.children;
+	const [firstChild, ...restChildren] = paragraph.children;
 
 	if (!isTextNode(firstChild)) {
 		return null;
 	}
 
 	const [, ...restLines] = firstChild.value.split("\n");
-
-	if (restLines.length === 0) {
-		return null;
-	}
-
 	const restText = restLines.join("\n");
 
-	if (!restText.trim()) {
+	if (restLines.length === 0 && restChildren.length === 0) {
 		return null;
 	}
 
-	paragraph.children = [{ type: "text", value: restText }];
+	if (!restText.trim() && restChildren.length === 0) {
+		return null;
+	}
+
+	const newFirstChild = restText
+		? { type: "text" as const, value: restText }
+		: null;
+	paragraph.children = newFirstChild
+		? [newFirstChild, ...restChildren]
+		: restChildren;
 
 	return paragraph;
 };
