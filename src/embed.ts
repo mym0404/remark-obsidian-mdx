@@ -170,7 +170,7 @@ const buildImageNode = ({
 	return {
 		type: "image",
 		url,
-		alt: target.page,
+		alt: "",
 		title: undefined,
 		data:
 			hProperties.width || hProperties.height
