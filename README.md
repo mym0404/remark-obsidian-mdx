@@ -279,7 +279,7 @@ remark().use(remarkObsidianMdx, {
     image: ({ target, resolvedUrl, imageWidth, imageHeight }) => ({
       type: "image",
       url: resolvedUrl ?? target.page,
-      alt: target.page,
+      alt: "", // in most cases you might want to derive alt text from some other source
       data: {
         hProperties: {
           width: imageWidth ?? 640,
