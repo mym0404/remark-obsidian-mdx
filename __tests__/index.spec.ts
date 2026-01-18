@@ -782,7 +782,7 @@ test("Should transform resolved embed urls", async () => {
 	const contentRoot = path.resolve(__dirname, "fixtures", "vault");
 	const options = {
 		contentRoot,
-		embedingPathTransform: ({
+		embeddingPathTransform: ({
 			kind,
 			resolvedUrl,
 		}: EmbedPathTransformContext) => {

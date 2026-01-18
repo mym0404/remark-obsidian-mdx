@@ -93,7 +93,7 @@ export default defineConfig({
           contentRootUrlPrefix: "",
           wikiLinkPathTransform: ({ resolvedUrl }) =>
             resolvedUrl?.replace("/content", ""),
-          embedingPathTransform: ({ resolvedUrl }) =>
+          embeddingPathTransform: ({ resolvedUrl }) =>
             resolvedUrl?.replace("/content", ""),
           callout: {
             componentName: "Callout",
@@ -296,7 +296,7 @@ remark().use(remarkObsidianMdx, {
       children: [],
     }),
   },
-  embedingPathTransform: ({ kind, resolvedUrl }) => {
+  embeddingPathTransform: ({ kind, resolvedUrl }) => {
     if (kind === "image" || kind === "video") {
       return resolvedUrl ?? null;
     }
@@ -337,7 +337,7 @@ remark().use(remarkObsidianMdx, {
 - If `embedRendering.image` is omitted, the plugin emits a standard `image` node with `data.hProperties.width/height` inferred from the file.
 - If `embedRendering.video` is omitted, it emits a `video` MDX JSX node.
 
-### embedingPathTransform
+### embeddingPathTransform
 
 - Overrides resolved URLs for embeds based on embed kind.
 - Returning a string overrides `resolvedUrl`.
