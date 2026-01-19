@@ -33,7 +33,7 @@ export type PluginOptions = {
 	embedRendering?: EmbedRenderingOptions;
 	contentRoot: string;
 	contentRootUrlPrefix?: string;
-	embedingPathTransform?: (
+	embeddingPathTransform?: (
 		context: EmbedPathTransformContext,
 	) => string | null | undefined;
 	wikiLinkPathTransform?: (
@@ -134,7 +134,7 @@ function plugin(this: any, options: PluginOptions) {
 			embedRendering,
 			contentRoot,
 			contentRootUrlPrefix,
-			embedingPathTransform,
+			embeddingPathTransform,
 			wikiLinkPathTransform,
 		} = options;
 		const resolver = buildContentResolverFromRoot(contentRoot);
@@ -182,7 +182,7 @@ function plugin(this: any, options: PluginOptions) {
 				contentRoot,
 				contentRootUrlPrefix,
 				resolvedPath: resolvedPath ?? undefined,
-				pathTransform: embedingPathTransform,
+				pathTransform: embeddingPathTransform,
 			});
 			const kind = getEmbedKind(target);
 			const isResolved = Boolean(resolvedPath);
@@ -231,7 +231,7 @@ function plugin(this: any, options: PluginOptions) {
 					contentRoot,
 					contentRootUrlPrefix,
 					resolvedPath: resolvedPath ?? undefined,
-					pathTransform: embedingPathTransform,
+					pathTransform: embeddingPathTransform,
 				});
 
 				const rendered = renderEmbedNode({

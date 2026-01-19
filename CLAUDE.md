@@ -52,4 +52,4 @@ Mimics Obsidian's link resolution algorithm:
 - `contentRootUrlPrefix` - URL prefix for resolved paths
 - `callout` - Component name, type mapping, prop names
 - `embedRendering` - Custom renderers for note/image/video embeds
-- `embedingPathTransform` / `wikiLinkPathTransform` - URL transformation hooks
+- `embeddingPathTransform` / `wikiLinkPathTransform` - URL transformation hooks
