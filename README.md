@@ -263,6 +263,7 @@ remark().use(remarkObsidianMdx, {
       success: "success",
       done: "success",
       check: "success",
+      idea: "idea",
     },
   },
   contentRoot: "/vault",
