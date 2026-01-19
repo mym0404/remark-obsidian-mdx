@@ -58,8 +58,13 @@ const isLinkNode = (value: unknown): value is LinkNode =>
 	typeof value.url === "string" &&
 	Array.isArray(value.children);
 
-const isImageNode = (value: unknown): value is { type: "image"; url: string } =>
-	isRecord(value) && value.type === "image" && typeof value.url === "string";
+const isImageNode = (
+	value: unknown,
+): value is { type: "image"; url: string; alt: string } =>
+	isRecord(value) &&
+	value.type === "image" &&
+	typeof value.url === "string" &&
+	typeof value.alt === "string";
 
 const isMdxJsxTextElement = (value: unknown): value is MdxJsxTextElement =>
 	isRecord(value) &&
@@ -132,7 +137,7 @@ const findLinkNodes = ({ tree }: { tree: unknown }) =>
 	collectNodes<LinkNode>({ node: tree, isMatch: isLinkNode });
 
 const findImageNodes = ({ tree }: { tree: unknown }) =>
-	collectNodes<{ type: "image"; url: string }>({
+	collectNodes<{ type: "image"; url: string; alt: string }>({
 		node: tree,
 		isMatch: isImageNode,
 	});
@@ -516,6 +521,51 @@ test("Should support image embeds", async () => {
 	const [image] = findImageNodes({ tree });
 
 	expect(image.url).toBe("/image.png");
+});
+
+test("Should support image embeds with alt text", async () => {
+	const text = "![[image.png|Custom alt text]]";
+	const contentRoot = path.resolve(__dirname, "fixtures", "vault");
+	const options = {
+		contentRoot,
+		embedRendering: {},
+	};
+
+	const tree = await getTree({ text, options });
+	const [image] = findImageNodes({ tree });
+
+	expect(image.url).toBe("/image.png");
+	expect(image.alt).toBe("Custom alt text");
+});
+
+test("Should have empty alt text for image embeds without alias", async () => {
+	const text = "![[image.png]]";
+	const contentRoot = path.resolve(__dirname, "fixtures", "vault");
+	const options = {
+		contentRoot,
+		embedRendering: {},
+	};
+
+	const tree = await getTree({ text, options });
+	const [image] = findImageNodes({ tree });
+
+	expect(image.url).toBe("/image.png");
+	expect(image.alt).toBe("");
+});
+
+test("Should support inline image embeds with alt text", async () => {
+	const text = "hello ![[image.png|Inline alt]] world";
+	const contentRoot = path.resolve(__dirname, "fixtures", "vault");
+	const options = {
+		contentRoot,
+		embedRendering: {},
+	};
+
+	const tree = await getTree({ text, options });
+	const [image] = findImageNodes({ tree });
+
+	expect(image.url).toBe("/image.png");
+	expect(image.alt).toBe("Inline alt");
 });
 
 test("Should support video embeds", async () => {

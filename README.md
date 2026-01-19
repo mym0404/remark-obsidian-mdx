@@ -4,6 +4,8 @@
 
 > This plugin is inspired by [remark-obsidian](https://github.com/johackim/remark-obsidian)
 
+> Read the blog post: [How I'm Writing MDX with Obsidian](https://mym0404.medium.com/how-im-writing-mdx-with-obsidian-71fa430e65ee)
+
 [![Version](https://img.shields.io/github/tag/mym0404/remark-obsidian-mdx.svg?label=Version&style=flat&colorA=2B323B&colorB=1e2329)](https://github.com/mym0404/remark-obsidian-mdx/releases)
 [![License](https://img.shields.io/badge/license-GPL%20v3%2B-yellow.svg?label=License&style=flat&colorA=2B323B&colorB=1e2329)](https://raw.githubusercontent.com/mym0404/remark-obsidian-mdx/master/LICENSE.txt)
 
@@ -21,6 +23,7 @@ A blog built with this plugin is available at https://english.mjstudio.net, and 
 - `[[Wiki link]]` to mdast `link` nodes (alias divider is `|`)
 - `[[#Heading]]` uses a heading slug
 - `![[Embed]]` to user-provided MDX JSX nodes (note/image/video renderers)
+- `![[image.png|alt text]]` supports custom alt text for image embeds
 - Match notes, embeddings from the contentRoot recursively(mocking Obsidian's algorithm). You don't need to put entire path of resources. Just write [[img.png]]
 
 ## Installation
@@ -277,10 +280,10 @@ remark().use(remarkObsidianMdx, {
       ],
       children: [],
     }),
-    image: ({ target, resolvedUrl, imageWidth, imageHeight }) => ({
+    image: ({ target, resolvedUrl, imageWidth, imageHeight, alias }) => ({
       type: "image",
       url: resolvedUrl ?? target.page,
-      alt: "", // in most cases you might want to derive alt text from some other source
+      alt: alias || "",
       data: {
         hProperties: {
           width: imageWidth ?? 640,
@@ -332,10 +335,10 @@ remark().use(remarkObsidianMdx, {
 
 - Controls how `![[...]]` is rendered. Heading (`#`) and block (`^`) embeds are ignored.
 - Unsupported embed types (non-note/image/video files) are ignored.
-- Receives `resolvedUrl` and `imageWidth`/`imageHeight` when available.
+- Receives `resolvedUrl`, `imageWidth`/`imageHeight`, and `alias` when available.
 - For embeds, `resolvedUrl` includes extensions by default.
 - If a target cannot be resolved under `contentRoot`, the default output is a plain text fallback. You can override this with `embedRendering.notFound`.
-- If `embedRendering.image` is omitted, the plugin emits a standard `image` node with `data.hProperties.width/height` inferred from the file.
+- If `embedRendering.image` is omitted, the plugin emits a standard `image` node with `data.hProperties.width/height` inferred from the file and `alt` set from the alias (e.g., `![[image.png|My alt text]]`).
 - If `embedRendering.video` is omitted, it emits a `video` MDX JSX node.
 
 ### embeddingPathTransform
