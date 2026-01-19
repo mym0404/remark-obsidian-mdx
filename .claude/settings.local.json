@@ -8,7 +8,9 @@
       "Bash(git checkout:*)",
       "Bash(git pull:*)",
       "Bash(gh pr view:*)",
-      "Bash(gh pr diff:*)"
+      "Bash(gh pr diff:*)",
+      "Bash(pnpm biome check:*)",
+      "Bash(gh pr create --title \"feat: support custom alt text for image embeds via alias syntax\" --body \"$\\(cat <<''EOF''\n## Summary\n\n- Add support for `![[image.png|alt text]]` syntax to set custom alt text for embedded images\n- The alias part after the pipe is now used as the image''s alt attribute in the default image renderer\n- Add Medium blog post link to README\n\n## Changes\n\n- **src/embed.ts**: Add `alias` parameter to `buildImageNode` function and pass it from the default image renderer\n- **__tests__/index.spec.ts**: Add 3 new tests for alt text functionality\n- **README.md**: Document the new feature and add blog post link\n\n## Test plan\n\n- [x] Added tests for image embeds with custom alt text\n- [x] Added regression test for empty alt text when no alias\n- [x] Added test for inline image embeds with alt text\n- [x] All 39 tests pass\nEOF\n\\)\" --web)"
     ]
   }
 }
