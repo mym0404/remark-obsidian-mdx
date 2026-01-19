@@ -151,11 +151,13 @@ const buildImageNode = ({
 	resolvedUrl,
 	imageWidth,
 	imageHeight,
+	alias,
 }: {
 	target: EmbedTarget;
 	resolvedUrl?: string;
 	imageWidth?: number;
 	imageHeight?: number;
+	alias?: string;
 }) => {
 	const url = resolvedUrl ?? target.page;
 	const hProperties: { width?: number; height?: number } = {};
@@ -170,7 +172,7 @@ const buildImageNode = ({
 	return {
 		type: "image",
 		url,
-		alt: "",
+		alt: alias || "",
 		title: undefined,
 		data:
 			hProperties.width || hProperties.height
@@ -285,6 +287,7 @@ export const renderEmbedNode = ({
 					resolvedUrl: context.resolvedUrl,
 					imageWidth: context.imageWidth,
 					imageHeight: context.imageHeight,
+					alias: context.alias,
 				}));
 
 		return render({
