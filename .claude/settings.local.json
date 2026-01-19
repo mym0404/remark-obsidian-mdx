@@ -6,7 +6,9 @@
       "Bash(pnpm typecheck:*)",
       "Bash(pnpm lint:*)",
       "Bash(git checkout:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr diff:*)"
     ]
   }
 }
