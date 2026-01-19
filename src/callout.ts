@@ -40,6 +40,7 @@ const DEFAULT_CALLOUT_TYPE_MAP = {
 	success: "success",
 	done: "success",
 	check: "success",
+	idea: "idea",
 };
 
 const isMdxJsxAttribute = (value: unknown): value is MdxJsxAttribute =>
